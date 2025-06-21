@@ -1,6 +1,6 @@
 use uuid::Uuid;
 use serde_json::json;
-use crate::models::status::SnapcastStatus;
+use crate::models::server::getstatus::SnapcastStatus;
 use serde_json::Value;
 
 pub fn create_status_request() -> String {

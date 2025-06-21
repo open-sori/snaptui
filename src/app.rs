@@ -5,7 +5,8 @@ use crate::websocket::ConnectionStatus;
 use crate::ui::{initialize_terminal, restore_terminal, draw_ui, AppState};
 use crate::input::{handle_input, InputEvent};
 use std::time::Duration;
-use crate::models::status::SnapcastStatus;
+use crate::models::server::getstatus::SnapcastStatus;
+use crate::commands::server::getstatus::extract_server_version;
 
 pub struct Application {
     pub terminal: ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
@@ -46,10 +47,19 @@ impl Application {
 
         // Start status data update task
         let status_data_arc = self.status_data.clone();
+        let message_arc = self.app_state.last_message.clone();
         tokio::spawn(async move {
             while let Some(msg) = message_rx.recv().await {
                 if let Ok(status) = crate::commands::server::getstatus::parse_status_response(&msg) {
                     *status_data_arc.lock().unwrap() = Some(status);
+
+                    // Update the last message with the raw JSON
+                    *message_arc.lock().unwrap() = msg.clone();
+
+                    // Extract and log the server version
+                    if let Some(version) = extract_server_version(&msg) {
+                        println!("Server version: {}", version);
+                    }
                 }
             }
         });

@@ -31,16 +31,20 @@ pub fn restore_terminal() -> Result<()> {
 
 pub fn draw_ui(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
-    _app_state: &AppState,
+    app_state: &AppState,
     server_version: &str,
 ) -> Result<()> {
+    // Use the last_message field
+    let message = app_state.last_message.lock().unwrap();
+    let last_message = message.as_str();
+
     terminal.draw(|f| {
         let size = f.size();
         let layout = create_layout(size);
 
-        draw_header(f, _app_state, layout[0]);
-        draw_message_panel(f, _app_state, layout[1]);
-        draw_footer(f, _app_state, server_version, layout[2]);
+        draw_header(f, app_state, layout[0]);
+        draw_message_panel(f, app_state, last_message, layout[1]);
+        draw_footer(f, app_state, server_version, layout[2]);
     })?;
     Ok(())
 }
@@ -94,13 +98,13 @@ fn draw_footer(f: &mut Frame, _app_state: &AppState, server_version: &str, area:
     });
 }
 
-fn draw_message_panel(f: &mut Frame, _app_state: &AppState, area: Rect) {
+fn draw_message_panel(f: &mut Frame, _app_state: &AppState, last_message: &str, area: Rect) {
     let messages_block = Block::default()
         .title("Information")
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::Blue));
 
-    let info_text = Paragraph::new("Snapcast WebSocket is running.")
+    let info_text = Paragraph::new(last_message)
         .block(Block::default())
         .style(Style::default().fg(Color::White))
         .alignment(Alignment::Center)
