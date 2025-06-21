@@ -6,6 +6,7 @@ use tokio_tungstenite::MaybeTlsStream;
 use tokio::net::TcpStream;
 use std::time::Duration;
 use std::fmt;
+use crate::commands::server::getstatus::create_status_request;
 
 #[derive(Debug, Clone)]
 pub enum ConnectionStatus {
@@ -26,13 +27,18 @@ impl fmt::Display for ConnectionStatus {
     }
 }
 
-pub async fn websocket_task(tx: mpsc::Sender<String>, status_tx: mpsc::Sender<ConnectionStatus>) {
-    let websocket_url = "ws://localhost:1780/jsonrpc";
+pub async fn websocket_task(
+    tx: mpsc::Sender<String>,
+    status_tx: mpsc::Sender<ConnectionStatus>,
+    host: String,
+    port: u16
+) {
+    let websocket_url = format!("ws://{}:{}/jsonrpc", host, port);
 
     loop {
         let _ = status_tx.send(ConnectionStatus::Connecting).await;
 
-        match connect_async(websocket_url).await {
+        match connect_async(&websocket_url).await {
             Ok((ws_stream, _)) => {
                 let _ = status_tx.send(ConnectionStatus::Connected).await;
 
@@ -56,8 +62,15 @@ async fn handle_connection(
 ) -> Result<(), String> {
     let (mut write, mut read) = ws_stream.split();
 
+    // Send initial ping
     if let Err(e) = write.send(Message::Ping(vec![])).await {
         return Err(format!("Failed to send ping: {}", e));
+    }
+
+    // Create and send the status request
+    let status_request = create_status_request();
+    if let Err(e) = write.send(Message::Text(status_request)).await {
+        return Err(format!("Failed to send status request: {}", e));
     }
 
     while let Some(msg) = read.next().await {
