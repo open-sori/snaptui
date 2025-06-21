@@ -4,11 +4,12 @@ mod ui;
 mod commands;
 mod cli;
 mod app;
+mod models;
 
 use std::io::Result;
 use tokio::sync::mpsc;
 use cli::Args;
-use clap::Parser;  // Added this import
+use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {

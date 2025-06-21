@@ -1,14 +1,16 @@
 use tokio::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::io::Result;
 use crate::websocket::ConnectionStatus;
 use crate::ui::{initialize_terminal, restore_terminal, draw_ui, AppState};
 use crate::input::{handle_input, InputEvent};
 use std::time::Duration;
+use crate::models::status::SnapcastStatus;
 
 pub struct Application {
     pub terminal: ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
     pub app_state: AppState,
+    pub status_data: Arc<Mutex<Option<SnapcastStatus>>>,
 }
 
 impl Application {
@@ -16,13 +18,16 @@ impl Application {
         let terminal = initialize_terminal()?;
 
         let app_state = AppState {
-            last_message: Arc::new(std::sync::Mutex::new(String::from("Waiting for messages..."))),
-            status: Arc::new(std::sync::Mutex::new(ConnectionStatus::Disconnected)),
+            last_message: Arc::new(Mutex::new(String::from("Waiting for messages..."))),
+            status: Arc::new(Mutex::new(ConnectionStatus::Disconnected)),
         };
+
+        let status_data = Arc::new(Mutex::new(None));
 
         Ok(Self {
             terminal,
             app_state,
+            status_data,
         })
     }
 
@@ -39,44 +44,38 @@ impl Application {
             }
         });
 
+        // Start status data update task
+        let status_data_arc = self.status_data.clone();
+        tokio::spawn(async move {
+            while let Some(msg) = message_rx.recv().await {
+                if let Ok(status) = crate::commands::server::getstatus::parse_status_response(&msg) {
+                    *status_data_arc.lock().unwrap() = Some(status);
+                }
+            }
+        });
+
         loop {
+            // Get the server version from status_data
+            let server_version = {
+                let status_data = self.status_data.lock().unwrap();
+                status_data.as_ref().and_then(|data| Some(data.result.server.snapserver.version.clone())).unwrap_or_default()
+            };
+
             // Draw UI
-            if let Err(e) = draw_ui(&mut self.terminal, &self.app_state) {
+            if let Err(e) = draw_ui(&mut self.terminal, &self.app_state, &server_version) {
                 eprintln!("Error drawing UI: {}", e);
                 break;
             }
 
-            // Check for new messages or input
-            tokio::select! {
-                // Process messages
-                Some(msg) = message_rx.recv() => {
-                    self.handle_message(msg).await;
-                }
-                // Handle input
-                _ = tokio::time::sleep(Duration::from_millis(100)) => {
-                    if let Ok(InputEvent::Quit) = handle_input() {
-                        break;
-                    }
-                }
+            // Check for input
+            if let Ok(InputEvent::Quit) = handle_input() {
+                break;
             }
+
+            // Sleep to control UI update rate
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
         restore_terminal()
-    }
-
-    async fn handle_message(&self, msg: String) {
-        // Try to parse the message as JSON and pretty print it
-        let formatted_message = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&msg) {
-            if let Ok(pretty) = serde_json::to_string_pretty(&parsed) {
-                pretty
-            } else {
-                msg
-            }
-        } else {
-            msg
-        };
-
-        // Update the last message
-        *self.app_state.last_message.lock().unwrap() = formatted_message;
     }
 }

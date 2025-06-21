@@ -936,6 +936,7 @@ dependencies = [
  "crossterm",
  "futures-util",
  "ratatui",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-tungstenite",

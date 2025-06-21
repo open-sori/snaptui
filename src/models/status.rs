@@ -1,0 +1,113 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SnapcastStatus {
+    pub id: String,
+    pub jsonrpc: String,
+    pub result: ResultData,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResultData {
+    pub server: ServerInfo,
+    pub groups: Vec<Group>,
+    pub streams: Vec<Stream>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ServerInfo {
+    pub host: HostInfo,
+    pub snapserver: SnapserverInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HostInfo {
+    pub arch: String,
+    pub ip: String,
+    pub mac: String,
+    pub name: String,
+    pub os: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SnapserverInfo {
+    pub controlProtocolVersion: u32,
+    pub name: String,
+    pub protocolVersion: u32,
+    pub version: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Group {
+    pub id: String,
+    pub muted: bool,
+    pub name: String,
+    pub stream_id: String,
+    pub clients: Vec<Client>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Client {
+    pub id: String,
+    pub connected: bool,
+    pub config: ClientConfig,
+    pub host: HostInfo,
+    pub lastSeen: LastSeen,
+    pub snapclient: SnapclientInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClientConfig {
+    pub instance: u32,
+    pub latency: i32,
+    pub name: String,
+    pub volume: Volume,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Volume {
+    pub muted: bool,
+    pub percent: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LastSeen {
+    pub sec: u64,
+    pub usec: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SnapclientInfo {
+    pub name: String,
+    pub protocolVersion: u32,
+    pub version: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Stream {
+    pub id: String,
+    pub status: String,
+    pub uri: Uri,
+    pub properties: StreamProperties,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Uri {
+    pub fragment: String,
+    pub host: String,
+    pub path: String,
+    pub query: HashMap<String, String>,
+    pub raw: String,
+    pub scheme: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StreamProperties {
+    pub canControl: bool,
+    pub canGoNext: bool,
+    pub canGoPrevious: bool,
+    pub canPause: bool,
+    pub canPlay: bool,
+    pub canSeek: bool,
+}
