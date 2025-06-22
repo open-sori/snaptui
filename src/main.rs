@@ -13,6 +13,12 @@ use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Initialize logging with debug level
+    env_logger::Builder::from_default_env()
+        .filter_level(log::LevelFilter::Debug)
+        .format_timestamp(None)
+        .init();
+
     // Parse command line arguments
     let args = Args::parse();
 

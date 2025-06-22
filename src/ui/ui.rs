@@ -1,6 +1,6 @@
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Paragraph, List, ListItem, Wrap},
     layout::{Layout, Constraint, Direction, Rect, Alignment},
     style::{Style, Color},
 };
@@ -11,10 +11,13 @@ use crossterm::{
 use std::io::{stdout, Result};
 use std::sync::{Arc, Mutex};
 use crate::websocket::ConnectionStatus;
+use crate::models::server::getstatus::GetStatusData;
 
 pub struct AppState {
     pub last_message: Arc<Mutex<String>>,
     pub status: Arc<Mutex<ConnectionStatus>>,
+    pub server_version: Arc<Mutex<String>>,
+    pub status_data: Arc<Mutex<Option<GetStatusData>>>,
 }
 
 pub fn initialize_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
@@ -32,19 +35,14 @@ pub fn restore_terminal() -> Result<()> {
 pub fn draw_ui(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     app_state: &AppState,
-    server_version: &str,
 ) -> Result<()> {
-    // Use the last_message field
-    let message = app_state.last_message.lock().unwrap();
-    let last_message = message.as_str();
-
     terminal.draw(|f| {
         let size = f.size();
         let layout = create_layout(size);
 
         draw_header(f, app_state, layout[0]);
-        draw_message_panel(f, app_state, last_message, layout[1]);
-        draw_footer(f, app_state, server_version, layout[2]);
+        draw_content(f, app_state, layout[1]);
+        draw_footer(f, app_state, layout[2]);
     })?;
     Ok(())
 }
@@ -72,16 +70,19 @@ fn draw_header(f: &mut Frame, app_state: &AppState, area: Rect) {
     f.render_widget(header_text, area);
 }
 
-fn draw_footer(f: &mut Frame, _app_state: &AppState, server_version: &str, area: Rect) {
+fn draw_footer(f: &mut Frame, app_state: &AppState, area: Rect) {
+    let version_guard = app_state.server_version.lock().unwrap();
+    let version = version_guard.as_str();
+
     let footer_block = Block::default()
         .title("Status")
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::Cyan));
 
-    let footer_content = if server_version.is_empty() {
+    let footer_content = if version.is_empty() {
         "Press 'q' to quit".to_string()
     } else {
-        format!("Snapcast Server: v{} | Press 'q' to quit", server_version)
+        format!("Snapcast Server: v{} | Press 'q' to quit", version)
     };
 
     let footer_text = Paragraph::new(footer_content)
@@ -98,25 +99,82 @@ fn draw_footer(f: &mut Frame, _app_state: &AppState, server_version: &str, area:
     });
 }
 
-fn draw_message_panel(f: &mut Frame, _app_state: &AppState, last_message: &str, area: Rect) {
-    let messages_block = Block::default()
-        .title("Information")
+fn draw_content(f: &mut Frame, app_state: &AppState, area: Rect) {
+    let status_data_guard = app_state.status_data.lock().unwrap();
+
+    let content_block = Block::default()
+        .title("Streams Information")
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::Blue));
 
-    let info_text = Paragraph::new(last_message)
-        .block(Block::default())
-        .style(Style::default().fg(Color::White))
-        .alignment(Alignment::Center)
-        .wrap(Wrap { trim: true });
+    f.render_widget(content_block, area);
 
-    f.render_widget(messages_block, area);
-    f.render_widget(info_text, Rect {
+    let inner_area = Rect {
         x: 1,
         y: 1,
         width: area.width.saturating_sub(2),
         height: area.height.saturating_sub(2),
-    });
+    };
+
+    if let Some(status) = &*status_data_guard {
+        let stream_count = status.result.server.streams.len();
+
+        // Create a simplified list showing stream count and IDs
+        let mut items = Vec::new();
+
+        // Add basic server info
+        items.push(ListItem::new(format!(
+            "Server: {} | Version: {}",
+            status.result.server.server.host.name,
+            status.result.server.server.snapserver.version
+        )));
+
+        // Add stream count information
+        items.push(ListItem::new(""));
+        items.push(ListItem::new(format!(
+            "Total Streams: {}",
+            stream_count
+        )));
+
+        // Add stream IDs
+        items.push(ListItem::new("Stream IDs:"));
+        for stream in &status.result.server.streams {
+            items.push(ListItem::new(format!(
+                "- {}",
+                stream.id
+            )));
+
+            // Add stream status and URI information
+            items.push(ListItem::new(format!(
+                "  Status: {}",
+                stream.status
+            )));
+
+            items.push(ListItem::new(format!(
+                "  URI: {}",
+                stream.uri.raw
+            )));
+        }
+
+        let list = List::new(items)
+            .style(Style::default().fg(Color::White))
+            .start_corner(Corner::TopLeft);
+
+        f.render_widget(list, inner_area);
+    } else {
+        let message_guard = app_state.last_message.lock().unwrap();
+        let last_message = message_guard.as_str();
+
+        let info_text = Paragraph::new(format!(
+            "{}",
+            last_message
+        ))
+        .style(Style::default().fg(Color::White))
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: true });
+
+        f.render_widget(info_text, inner_area);
+    }
 }
 
 fn get_status_info(status: &ConnectionStatus) -> (&str, Color) {

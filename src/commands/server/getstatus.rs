@@ -1,7 +1,7 @@
 use uuid::Uuid;
-use serde_json::json;
-use crate::models::server::getstatus::SnapcastStatus;
-use serde_json::Value;
+use serde_json::{json, Value, Error};
+use serde::de::Error as SerdeError;
+use crate::models::server::getstatus::GetStatusData;
 
 pub fn create_status_request() -> String {
     let uuid = Uuid::new_v4();
@@ -12,21 +12,42 @@ pub fn create_status_request() -> String {
     }).to_string()
 }
 
-pub fn parse_status_response(response: &str) -> Result<SnapcastStatus, serde_json::Error> {
-    serde_json::from_str(response)
-}
+pub fn parse_status_response(response: &str) -> Result<GetStatusData, Error> {
+    // First try to parse as GetStatusData
+    match serde_json::from_str::<GetStatusData>(response) {
+        Ok(status) => Ok(status),
+        Err(e) => {
+            // Log the raw response for debugging
+            log::debug!("Failed to parse response: {}", response);
+            log::debug!("Parsing error: {}", e);
 
-pub fn extract_server_version(response: &str) -> Option<String> {
-    if let Ok(parsed) = serde_json::from_str::<Value>(response) {
-        if let Some(result) = parsed.get("result") {
-            if let Some(server) = result.get("server") {
-                if let Some(snapserver) = server.get("snapserver") {
-                    if let Some(version) = snapserver.get("version") {
-                        return version.as_str().map(|s| s.to_string());
-                    }
-                }
+            // If parsing as GetStatusData fails, check if it's valid JSON
+            if serde_json::from_str::<Value>(response).is_ok() {
+                // It's valid JSON but not matching our expected format
+                Err(Error::custom(format!(
+                    "Valid JSON but not matching expected GetStatusData format. Error: {}",
+                    e
+                )))
+            } else {
+                // It's not valid JSON at all
+                Err(Error::custom(format!("Invalid JSON: {}", e)))
             }
         }
     }
-    None
+}
+
+pub fn extract_server_version(response: &str) -> Option<String> {
+    let parsed: Value = match serde_json::from_str(response) {
+        Ok(v) => v,
+        Err(e) => {
+            log::debug!("Failed to parse JSON for version extraction: {}", e);
+            return None;
+        }
+    };
+
+    parsed.get("result")
+        .and_then(|result| result.get("server"))
+        .and_then(|server| server.get("snapserver"))
+        .and_then(|snapserver| snapserver.get("version"))
+        .and_then(|version| version.as_str().map(|s| s.to_string()))
 }
