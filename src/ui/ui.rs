@@ -1,6 +1,6 @@
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph, List, ListItem, Wrap},
+    widgets::{Block, Borders, Paragraph, List, ListItem, Wrap, ListDirection},
     layout::{Layout, Constraint, Direction, Rect, Alignment},
     style::{Style, Color},
 };
@@ -37,8 +37,8 @@ pub fn draw_ui(
     app_state: &AppState,
 ) -> Result<()> {
     terminal.draw(|f| {
-        let size = f.size();
-        let layout = create_layout(size);
+        let area = f.area();
+        let layout = create_layout(area);
 
         draw_header(f, app_state, layout[0]);
         draw_content(f, app_state, layout[1]);
@@ -117,64 +117,53 @@ fn draw_content(f: &mut Frame, app_state: &AppState, area: Rect) {
     };
 
     if let Some(status) = &*status_data_guard {
-        let stream_count = status.result.server.streams.len();
+        draw_stream_info(f, status, inner_area);
+    } else {
+        draw_waiting_message(f, app_state, inner_area);
+    }
+}
 
-        // Create a simplified list showing stream count and IDs
-        let mut items = Vec::new();
+fn draw_stream_info(f: &mut Frame, status: &GetStatusData, area: Rect) {
+    let mut items = Vec::new();
 
-        // Add basic server info
-        items.push(ListItem::new(format!(
-            "Server: {} | Version: {}",
-            status.result.server.server.host.name,
-            status.result.server.server.snapserver.version
-        )));
+    // Add basic server info
+    items.push(ListItem::new(format!(
+        "Server: {} | Version: {}",
+        status.result.server.server.host.name,
+        status.result.server.server.snapserver.version
+    )));
 
         // Add stream count information
+    items.push(ListItem::new(""));
+    items.push(ListItem::new(format!(
+        "Total Streams: {}",
+        status.result.server.streams.len()
+    )));
+
+    // Add stream details
+    for stream in &status.result.server.streams {
+        items.push(ListItem::new(format!("Stream ID: {}", stream.id)));
+        items.push(ListItem::new(format!("  Status: {}", stream.status)));
+        items.push(ListItem::new(format!("  URI: {}", stream.uri.raw)));
         items.push(ListItem::new(""));
-        items.push(ListItem::new(format!(
-            "Total Streams: {}",
-            stream_count
-        )));
+    }
 
-        // Add stream IDs
-        items.push(ListItem::new("Stream IDs:"));
-        for stream in &status.result.server.streams {
-            items.push(ListItem::new(format!(
-                "- {}",
-                stream.id
-            )));
+    let list = List::new(items)
+        .style(Style::default().fg(Color::White))
+        .direction(ListDirection::TopToBottom);
+    f.render_widget(list, area);
+}
 
-            // Add stream status and URI information
-            items.push(ListItem::new(format!(
-                "  Status: {}",
-                stream.status
-            )));
+fn draw_waiting_message(f: &mut Frame, app_state: &AppState, area: Rect) {
+    let message_guard = app_state.last_message.lock().unwrap();
+    let last_message = message_guard.as_str();
 
-            items.push(ListItem::new(format!(
-                "  URI: {}",
-                stream.uri.raw
-            )));
-        }
-
-        let list = List::new(items)
-            .style(Style::default().fg(Color::White))
-            .start_corner(Corner::TopLeft);
-
-        f.render_widget(list, inner_area);
-    } else {
-        let message_guard = app_state.last_message.lock().unwrap();
-        let last_message = message_guard.as_str();
-
-        let info_text = Paragraph::new(format!(
-            "{}",
-            last_message
-        ))
+    let info_text = Paragraph::new(last_message)
         .style(Style::default().fg(Color::White))
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: true });
 
-        f.render_widget(info_text, inner_area);
-    }
+    f.render_widget(info_text, area);
 }
 
 fn get_status_info(status: &ConnectionStatus) -> (&str, Color) {

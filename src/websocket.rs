@@ -1,12 +1,13 @@
 use tokio::sync::mpsc;
 use tokio_tungstenite::connect_async;
 use futures_util::{SinkExt, StreamExt};
-use tungstenite::protocol::Message;
+use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::MaybeTlsStream;
 use tokio::net::TcpStream;
 use std::time::Duration;
 use std::fmt;
 use crate::commands::server::getstatus::create_status_request;
+use log;
 
 #[derive(Debug, Clone)]
 pub enum ConnectionStatus {
@@ -31,28 +32,37 @@ pub async fn websocket_task(
     tx: mpsc::Sender<String>,
     status_tx: mpsc::Sender<ConnectionStatus>,
     host: String,
-    port: u16
+    port: u16,
 ) {
     let websocket_url = format!("ws://{}:{}/jsonrpc", host, port);
+    let reconnect_delay = Duration::from_secs(1);
 
     loop {
-        let _ = status_tx.send(ConnectionStatus::Connecting).await;
+        update_status(&status_tx, ConnectionStatus::Connecting).await;
 
         match connect_async(&websocket_url).await {
             Ok((ws_stream, _)) => {
-                let _ = status_tx.send(ConnectionStatus::Connected).await;
+                update_status(&status_tx, ConnectionStatus::Connected).await;
 
                 if let Err(e) = handle_connection(ws_stream, &tx).await {
-                    let _ = status_tx.send(ConnectionStatus::Error(e.to_string())).await;
+                    log::error!("Connection error: {}", e);
+                    update_status(&status_tx, ConnectionStatus::Error(e.to_string())).await;
                 }
             }
             Err(e) => {
-                let _ = status_tx.send(ConnectionStatus::Error(e.to_string())).await;
+                log::error!("Connection failed: {}", e);
+                update_status(&status_tx, ConnectionStatus::Error(e.to_string())).await;
             }
         }
 
-        let _ = status_tx.send(ConnectionStatus::Disconnected).await;
-        tokio::time::sleep(Duration::from_secs(1)).await;
+        update_status(&status_tx, ConnectionStatus::Disconnected).await;
+        tokio::time::sleep(reconnect_delay).await;
+    }
+}
+
+async fn update_status(status_tx: &mpsc::Sender<ConnectionStatus>, status: ConnectionStatus) {
+    if let Err(e) = status_tx.send(status).await {
+        log::error!("Failed to send status update: {}", e);
     }
 }
 
@@ -63,25 +73,25 @@ async fn handle_connection(
     let (mut write, mut read) = ws_stream.split();
 
     // Send initial ping
-    if let Err(e) = write.send(Message::Ping(vec![])).await {
+    if let Err(e) = write.send(Message::Ping(vec![].into())).await {
         return Err(format!("Failed to send ping: {}", e));
     }
 
     // Create and send the status request
     let status_request = create_status_request();
-    if let Err(e) = write.send(Message::Text(status_request)).await {
+    if let Err(e) = write.send(Message::Text(status_request.into())).await {
         return Err(format!("Failed to send status request: {}", e));
     }
 
     while let Some(msg) = read.next().await {
         match msg {
             Ok(Message::Text(text)) => {
-                if tx.send(text).await.is_err() {
+                if tx.send(text.to_string()).await.is_err() {
                     return Err("Failed to send message to channel".into());
                 }
             }
-            Ok(Message::Ping(_)) => {
-                if let Err(e) = write.send(Message::Pong(vec![])).await {
+            Ok(Message::Ping(data)) => {
+                if let Err(e) = write.send(Message::Pong(data)).await {
                     return Err(format!("Failed to send pong: {}", e));
                 }
             }

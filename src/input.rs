@@ -1,4 +1,4 @@
-use crossterm::event::{self, Event, KeyCode};
+use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use std::time::Duration;
 use std::io::Result;
 
@@ -8,10 +8,11 @@ pub enum InputEvent {
 }
 
 pub fn handle_input() -> Result<InputEvent> {
-    if event::poll(Duration::from_millis(0))? {
-        if let Event::Key(key) = event::read()? {
-            if key.code == KeyCode::Char('q') || key.code == KeyCode::Esc {
-                return Ok(InputEvent::Quit);
+    if event::poll(Duration::from_millis(100))? {
+        if let Event::Key(KeyEvent { code, .. }) = event::read()? {
+            match code {
+                KeyCode::Char('q') | KeyCode::Esc => return Ok(InputEvent::Quit),
+                _ => {}
             }
         }
     }
