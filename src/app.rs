@@ -2,7 +2,7 @@ use tokio::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::io::Result;
 use crate::websocket::ConnectionStatus;
-use crate::ui::{initialize_terminal, restore_terminal, draw_ui, AppState};
+use crate::ui::{initialize_terminal, restore_terminal, draw_ui, AppState, TabSelection};
 use crate::input::{handle_input, InputEvent};
 use std::time::Duration;
 use crate::models::server::getstatus::GetStatusData;
@@ -27,6 +27,7 @@ impl Application {
             status: Arc::new(Mutex::new(ConnectionStatus::Disconnected)),
             server_version: Arc::new(Mutex::new(String::new())),
             status_data: Arc::clone(&status_data),
+            active_tab: Arc::new(Mutex::new(TabSelection::Groups)),
         };
 
         Ok(Self {
@@ -110,7 +111,7 @@ impl Application {
                     }
                 }
             }
-    });
+        });
 
         loop {
             // Draw UI
@@ -120,8 +121,17 @@ impl Application {
             }
 
             // Check for input
-            if let Ok(InputEvent::Quit) = handle_input() {
-                break;
+            let mut current_tab = self.app_state.active_tab.lock().unwrap();
+            match handle_input(&mut current_tab)? {
+                InputEvent::Quit => break,
+                InputEvent::SwitchTab(tab_index) => {
+                    *current_tab = match tab_index {
+                        0 => TabSelection::Groups,
+                        1 => TabSelection::Clients,
+                        _ => TabSelection::Streams,
+                    };
+                }
+                InputEvent::None => {}
             }
 
             // Sleep to control UI update rate

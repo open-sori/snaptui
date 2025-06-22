@@ -37,6 +37,12 @@ pub fn parse_status_response(response: &str) -> Result<GetStatusData, Error> {
 }
 
 pub fn extract_server_version(response: &str) -> Option<String> {
+    // First try to parse as GetStatusData to get the version
+    if let Ok(parsed) = serde_json::from_str::<GetStatusData>(response) {
+        return Some(parsed.result.server.server.snapserver.version);
+    }
+
+    // Fallback to manual extraction if the above fails
     let parsed: Value = match serde_json::from_str(response) {
         Ok(v) => v,
         Err(e) => {
@@ -45,9 +51,24 @@ pub fn extract_server_version(response: &str) -> Option<String> {
         }
     };
 
-    parsed.get("result")
+    // Try multiple paths to find the version
+    if let Some(version) = parsed.get("result")
         .and_then(|result| result.get("server"))
         .and_then(|server| server.get("snapserver"))
         .and_then(|snapserver| snapserver.get("version"))
         .and_then(|version| version.as_str().map(|s| s.to_string()))
+    {
+        return Some(version);
+    }
+
+    // If still not found, try alternative paths
+    if let Some(version) = parsed.get("result")
+        .and_then(|result| result.get("server"))
+        .and_then(|server| server.get("version"))
+        .and_then(|version| version.as_str().map(|s| s.to_string()))
+    {
+        return Some(version);
+    }
+
+    None
 }
