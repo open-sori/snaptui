@@ -1,16 +1,14 @@
 mod headers;
-mod tabs;
 mod body;
 mod footer;
 mod utils;
 pub use headers::draw_header;
-pub use tabs::{draw_tabs, TabSelection, Tab};
+pub use body::TabSelection;
 pub use body::draw_body;
 pub use footer::draw_footer;
 
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph},
     layout::{Layout, Constraint, Direction, Rect},
 };
 use std::sync::{Arc, Mutex};
@@ -28,6 +26,7 @@ pub struct AppState {
     pub server_version: Arc<Mutex<String>>,
     pub status_data: Arc<Mutex<Option<GetStatusData>>>,
     pub active_tab: Arc<Mutex<TabSelection>>,
+    pub selected_index: Arc<Mutex<usize>>, 
 }
 
 pub fn initialize_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
@@ -51,9 +50,8 @@ pub fn draw_ui(
         let layout = create_main_layout(area);
 
         draw_header(f, app_state, layout[0]);
-        draw_tabs(f, app_state, layout[1]);
-        draw_body(f, app_state, layout[2]);
-        draw_footer(f, app_state, layout[3]);
+        draw_body(f, app_state, layout[1]);
+        draw_footer(f, app_state, layout[2]);
     })?;
     Ok(())
 }
@@ -63,8 +61,7 @@ fn create_main_layout(area: Rect) -> Vec<Rect> {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),    // Header
-            Constraint::Length(3),    // Tabs
-            Constraint::Min(1),       // Body
+            Constraint::Min(1),       // Combined tabs and body
             Constraint::Length(3),    // Footer
         ])
         .split(area)

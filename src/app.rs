@@ -28,6 +28,7 @@ impl Application {
             server_version: Arc::new(Mutex::new(String::new())),
             status_data: Arc::clone(&status_data),
             active_tab: Arc::new(Mutex::new(TabSelection::Groups)),
+            selected_index: Arc::new(Mutex::new(0)),
         };
 
         Ok(Self {
@@ -41,7 +42,11 @@ impl Application {
         &mut self,
         mut message_rx: mpsc::Receiver<String>,
         mut status_rx: mpsc::Receiver<ConnectionStatus>,
+        refresh_tx: mpsc::Sender<bool>,
     ) -> Result<()> {
+        // Create a channel for sending WebSocket messages
+        let (ws_tx, _ws_rx) = mpsc::channel::<String>(32);
+
         // Start status update task
         let status_arc = Arc::clone(&self.app_state.status);
         tokio::spawn(async move {
@@ -122,15 +127,38 @@ impl Application {
 
             // Check for input
             let mut current_tab = self.app_state.active_tab.lock().unwrap();
-            match handle_input(&mut current_tab)? {
-                InputEvent::Quit => break,
-                InputEvent::SwitchTab(tab_index) => {
-                    *current_tab = match tab_index {
-                        0 => TabSelection::Groups,
-                        1 => TabSelection::Clients,
-                        _ => TabSelection::Streams,
-                    };
+            let mut selected_index = self.app_state.selected_index.lock().unwrap();
+
+            // Determine the maximum number of items based on the current tab
+            let max_items = if let Some(data) = &*self.status_data.lock().unwrap() {
+                match *current_tab {
+                    TabSelection::Groups => data.result.server.groups.len(),
+                    TabSelection::Clients => {
+                        data.result.server.groups.iter()
+                            .map(|g| g.clients.len())
+                            .sum()
+                    },
+                    TabSelection::Streams => data.result.server.streams.len(),
                 }
+            } else {
+                0
+            };
+
+            match handle_input(&mut current_tab, &mut selected_index, max_items)? {
+                InputEvent::Quit => break,
+                InputEvent::TabChanged | InputEvent::Up | InputEvent::Down => {
+                    // Update was handled in the function
+                },
+                InputEvent::Refresh => {
+                    // Create and send a new status request
+                    let status_request = crate::commands::server::getstatus::create_status_request();
+                    if let Err(e) = refresh_tx.send(true).await {
+                        log::error!("Failed to send refresh request: {}", e);
+                    }
+                    if let Err(e) = ws_tx.send(status_request).await {
+                        log::error!("Failed to send WebSocket message: {}", e);
+                    }
+                },
                 InputEvent::None => {}
             }
 

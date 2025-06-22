@@ -34,6 +34,7 @@ async fn main() -> Result<()> {
     // Create channels
     let (tx, message_rx) = mpsc::channel::<String>(32);
     let (status_tx, status_rx) = mpsc::channel::<websocket::ConnectionStatus>(32);
+    let (refresh_tx, _refresh_rx) = mpsc::channel::<bool>(32);
 
     // Start WebSocket connection
     tokio::spawn(async move {
@@ -41,7 +42,7 @@ async fn main() -> Result<()> {
     });
 
     // Run the application
-    app.run(message_rx, status_rx).await?;
+    app.run(message_rx, status_rx, refresh_tx).await?;
 
     Ok(())
 }

@@ -2,19 +2,57 @@ mod groups;
 mod clients;
 mod streams;
 
+pub mod tabs;
+
 use ratatui::{
     prelude::*,
-    layout::{Rect},
+    layout::{Layout, Constraint, Direction, Rect},
 };
 use crate::ui::AppState;
-use super::TabSelection;
+
+pub use tabs::TabSelection;
 
 pub fn draw_body(f: &mut Frame, app_state: &AppState, area: Rect) {
-    let active_tab = app_state.active_tab.lock().unwrap();
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(30), // Left column for tabs and list
+            Constraint::Percentage(70), // Right column for details
+        ])
+        .split(area);
 
+    // Draw tabs and list in the left column
+    draw_left_column(f, app_state, layout[0]);
+
+    // Draw details in the right column
+    draw_right_column(f, app_state, layout[1]);
+}
+
+fn draw_left_column(f: &mut Frame, app_state: &AppState, area: Rect) {
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(7),
+            Constraint::Min(1),
+        ])
+        .split(area);
+
+    // Draw tabs in the first section
+    tabs::draw_tabs(f, app_state, layout[0]);
+
+    let active_tab = app_state.active_tab.lock().unwrap();
     match *active_tab {
-        TabSelection::Groups => groups::draw_groups(f, app_state, area),
-        TabSelection::Clients => clients::draw_clients(f, app_state, area),
-        TabSelection::Streams => streams::draw_streams(f, app_state, area),
+        TabSelection::Groups => groups::draw_group_list(f, app_state, layout[1]),
+        TabSelection::Clients => clients::draw_client_list(f, app_state, layout[1]),
+        TabSelection::Streams => streams::draw_stream_list(f, app_state, layout[1]),
+    }
+}
+
+fn draw_right_column(f: &mut Frame, app_state: &AppState, area: Rect) {
+    let active_tab = app_state.active_tab.lock().unwrap();
+    match *active_tab {
+        TabSelection::Groups => groups::draw_group_details(f, app_state, area),
+        TabSelection::Clients => clients::draw_client_details(f, app_state, area),
+        TabSelection::Streams => streams::draw_stream_details(f, app_state, area),
     }
 }

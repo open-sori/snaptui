@@ -1,16 +1,18 @@
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Paragraph, Padding},
+    style::{Style, Color},
 };
-use crate::ui::AppState;
-use crate::ui::utils::apply_margin;
+use crate::ui::{AppState, utils::apply_margin};
 
 pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let status_data = app_state.status_data.lock().unwrap();
+    let selected_index = app_state.selected_index.lock().unwrap();
     let margin = 1;
 
     let content = if let Some(data) = &*status_data {
-        if let Some(group) = data.result.server.groups.first() {
+        if data.result.server.groups.len() > *selected_index {
+            let group = &data.result.server.groups[*selected_index];
             format!(
                 "ID: {}\nName: {}\nStream ID: {}\nMuted: {}",
                 group.id, group.name, group.stream_id, group.muted
@@ -26,7 +28,8 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
         .block(Block::default()
             .title(" [ Group Details ] ")
             .borders(Borders::ALL)
-            .padding(Padding::new(1, 1, 1, 1)))
+            .padding(Padding::new(3, 3, 1, 1)) // Increased left padding from 1 to 3
+            .title_style(Style::default().fg(Color::Magenta)))
         .style(Style::default().fg(Color::White));
 
     let inner_area = apply_margin(area, margin);
