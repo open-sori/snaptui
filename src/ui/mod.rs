@@ -62,7 +62,7 @@ fn create_main_layout(area: Rect) -> Vec<Rect> {
         .constraints([
             Constraint::Length(3),    // Header
             Constraint::Min(1),       // Combined tabs and body
-            Constraint::Length(3),    // Footer
+            Constraint::Length(7),    // Footer - increased from 5 to 7
         ])
         .split(area)
         .to_vec()

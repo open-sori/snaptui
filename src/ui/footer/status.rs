@@ -1,15 +1,17 @@
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Padding},
     layout::{Rect, Alignment},
     style::{Style, Color},
 };
 use crate::ui::AppState;
 use crate::websocket::ConnectionStatus;
+use crate::ui::utils::apply_margin;
 
 pub fn draw_status(f: &mut Frame, app_state: &AppState, area: Rect) {
     let status = app_state.status.lock().unwrap();
     let version = app_state.server_version.lock().unwrap();
+    let margin = 1;
 
     // Truncate the version string if it's too long
     let display_version = if version.len() > 10 {
@@ -42,14 +44,16 @@ pub fn draw_status(f: &mut Frame, app_state: &AppState, area: Rect) {
 
     let status_block = Paragraph::new(status_text)
         .style(Style::default().fg(status_color).bold())
-        .alignment(Alignment::Center)
+        .alignment(Alignment::Center) // This centers the text horizontally
         .block(Block::default()
             .borders(Borders::ALL)
             .title(" [ Status ] ")
             .border_style(Style::default().fg(border_color))
             .title_style(Style::default().fg(border_color))
-            .style(Style::default().fg(Color::White)))
+            .style(Style::default().fg(Color::White))
+            .padding(Padding::new(1, 1, 1, 1))) // Add padding to help with centering
         .style(Style::default().fg(status_color));
 
-    f.render_widget(status_block, area);
+    let inner_area = apply_margin(area, margin);
+    f.render_widget(status_block, inner_area);
 }

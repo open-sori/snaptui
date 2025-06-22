@@ -1,37 +1,43 @@
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph},
-    layout::{Rect, Alignment},
+    widgets::{Block, Borders, List, ListItem, Padding},
+    layout::{Rect},
     style::{Style, Color},
 };
 use crate::ui::AppState;
+use crate::ui::utils::apply_margin;
 
 pub fn draw_infos(f: &mut Frame, app_state: &AppState, area: Rect) {
     let message = app_state.last_message.lock().unwrap();
+    let margin = 1;
 
-    // Extract just the last part of the message if it contains multiple lines
-    let display_message = if message.contains('\n') {
-        message.lines().last().unwrap_or(&message).to_string()
-    } else {
-        message.clone()
-    };
+    // Split the message into lines
+    let lines: Vec<&str> = message.lines().collect();
 
-    // Truncate the message if it's too long for the panel
-    let max_length = area.width as usize - 4; // Account for borders and padding
-    let display_message = if display_message.len() > max_length {
-        format!("{}...", &display_message[..max_length.saturating_sub(3)])
-    } else {
-        display_message
-    };
+    // Create a list of recent messages (up to 3)
+    let items: Vec<ListItem> = lines.iter()
+        .rev() // Show newest first
+        .take(3)
+        .enumerate()
+        .map(|(i, line)| {
+            let color = match i {
+                0 => Color::Green,  // Most recent
+                1 => Color::Yellow,
+                _ => Color::Gray,
+            };
+            ListItem::new(line.to_string()).style(Style::default().fg(color))
+        })
+        .collect();
 
-    let info_block = Paragraph::new(display_message)
+    let info_block = List::new(items)
         .style(Style::default().fg(Color::White))
-        .alignment(Alignment::Left)
         .block(Block::default()
             .borders(Borders::ALL)
             .title(" [ Events ] ")
+            .padding(Padding::new(2, 2, 1, 1))
             .title_style(Style::default().fg(Color::Magenta)))
-        .style(Style::default().fg(Color::White));
+        .highlight_style(Style::default().fg(Color::White));
 
-    f.render_widget(info_block, area);
+    let inner_area = apply_margin(area, margin);
+    f.render_widget(info_block, inner_area);
 }

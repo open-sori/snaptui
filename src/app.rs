@@ -8,7 +8,6 @@ use std::time::Duration;
 use crate::models::server::getstatus::GetStatusData;
 use crate::commands::server::getstatus::extract_server_version;
 use chrono::Local;
-use serde_json::Value;
 
 pub struct Application {
     pub terminal: ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
@@ -65,6 +64,15 @@ impl Application {
 
         tokio::spawn(async move {
             while let Some(msg) = message_rx.recv().await {
+                // First check if this is a notification (which might be different from status updates)
+                if is_notification(&msg) {
+                    if let Ok(mut message) = message_arc.lock() {
+                        *message = format!("[Notification] {} | {}", Local::now().format("%Y-%m-%d %H:%M:%S"), msg);
+                    }
+                    continue;
+                }
+
+                // Then try to parse as GetStatusData
                 match crate::commands::server::getstatus::parse_status_response(&msg) {
                     Ok(status) => {
                         if let Ok(mut data) = status_data_arc.lock() {
@@ -88,30 +96,10 @@ impl Application {
                             *version_lock = "Unknown version".to_string();
                         }
                     }
-                    Err(e) => {
-                        // If parsing as GetStatusData fails, check if it's valid JSON
-                        if serde_json::from_str::<Value>(&msg).is_ok() {
-                            // It's valid JSON but not matching our expected format
-                            if let Ok(mut message) = message_arc.lock() {
-                                *message = format!("Received valid JSON but not in expected format: {}", e);
-                            }
-                            if let Ok(mut version_lock) = version_arc.lock() {
-                                *version_lock = String::new();
-                            }
-                            if let Ok(mut ui_data) = ui_status_data.lock() {
-                                *ui_data = None;
-                            }
-                        } else {
-                            // It's not valid JSON at all
-                            if let Ok(mut message) = message_arc.lock() {
-                                *message = format!("Invalid message received: {}", msg);
-                            }
-                            if let Ok(mut version_lock) = version_arc.lock() {
-                                *version_lock = String::new();
-                            }
-                            if let Ok(mut ui_data) = ui_status_data.lock() {
-                                *ui_data = None;
-                            }
+                    Err(_) => {
+                        // Handle error case
+                        if let Ok(mut message) = message_arc.lock() {
+                            *message = format!("Error parsing message | {}", Local::now().format("%Y-%m-%d %H:%M:%S"));
                         }
                     }
                 }
@@ -168,4 +156,11 @@ impl Application {
 
         restore_terminal()
     }
+}
+
+// Add this helper function to check if a message is a notification
+fn is_notification(message: &str) -> bool {
+    // Snapcast notifications typically have a "method" field for notifications
+    // This is a simple check - you might need to adjust based on actual notification format
+    message.contains("\"method\"") && !message.contains("\"result\"")
 }
