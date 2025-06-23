@@ -7,7 +7,7 @@ use crate::input::{handle_input, InputEvent};
 use std::time::Duration;
 use crate::models::server::getstatus::GetStatusData;
 use crate::commands::server::getstatus::extract_server_version;
-use chrono::Local;
+
 use crate::ui::GroupDetailsFocus;
 use crate::ui::ClientDetailsFocus;
 
@@ -48,8 +48,8 @@ impl Application {
         mut status_rx: mpsc::Receiver<ConnectionStatus>,
         refresh_tx: mpsc::Sender<bool>,
     ) -> Result<()> {
-        // Create a channel for sending WebSocket messages
-        let (ws_tx, _ws_rx) = mpsc::channel::<String>(32);
+
+
 
         // Start status update task
         let status_arc = Arc::clone(&self.app_state.status);
@@ -74,10 +74,12 @@ impl Application {
                     continue;
                 }
 
-                // First check if this is a notification (which might be different from status updates)
+
+                // First check if this is a notification
                 if is_notification(&msg) {
                     if let Ok(mut message) = message_arc.lock() {
-                        *message = format!("{} | {}", Local::now().format("%Y-%m-%d %H:%M:%S"), msg);
+
+                        *message = msg;
                     }
                     continue;
                 }
@@ -97,14 +99,15 @@ impl Application {
                             if let Ok(mut version_lock) = version_arc.lock() {
                                 *version_lock = version;
                             }
-                        } else if let Ok(mut version_lock) = version_arc.lock() {
-                            *version_lock = "Unknown version".to_string();
+
+
                         }
                     }
                     Err(_) => {
-                        // Handle error case
+
                         if let Ok(mut message) = message_arc.lock() {
-                            *message = format!("Error parsing message | {}", Local::now().format("%Y-%m-%d %H:%M:%S"));
+
+                            *message = format!("Error parsing message");
                         }
                     }
                 }
@@ -160,7 +163,7 @@ impl Application {
                         *client_focused_field = ClientDetailsFocus::None;
                     },
                     InputEvent::Up | InputEvent::Down => {
-                        // Selection was updated in the function
+
                         // Set default focus when selecting a new item
                         if *details_focused {
                             match *current_tab {
@@ -171,23 +174,25 @@ impl Application {
                                     *client_focused_field = ClientDetailsFocus::Name;
                                 },
                                 _ => {}
-            }
+
         }
+                        }
                     },
                     InputEvent::Refresh => {
-                        // Create and send a new status request
-                        let status_request = crate::commands::server::getstatus::create_status_request();
+
+
                         if let Err(e) = refresh_tx.send(true).await {
                             log::error!("Failed to send refresh request: {}", e);
                         }
-                        if let Err(e) = ws_tx.send(status_request).await {
-                            log::error!("Failed to send WebSocket message: {}", e);
-                        }
+
+
+
                     },
-                    InputEvent::CycleFields => {
-                        // Field cycling is handled directly in the input handler
-                    },
-                    InputEvent::None => {}
+
+
+
+
+                    InputEvent::CycleFields | InputEvent::None => {}
                 },
                 Err(e) => {
                     log::error!("Error handling input: {}", e);
@@ -229,9 +234,10 @@ impl Application {
     }
 }
 
-// Add this helper function to check if a message is a notification
+
+// Helper function to check if a message is a notification
 fn is_notification(message: &str) -> bool {
-    // Snapcast notifications typically have a "method" field for notifications
-    // This is a simple check - you might need to adjust based on actual notification format
+
+
     message.contains("\"method\"") && !message.contains("\"result\"")
 }
