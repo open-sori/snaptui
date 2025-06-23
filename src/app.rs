@@ -74,7 +74,7 @@ impl Application {
                 // First check if this is a notification (which might be different from status updates)
                 if is_notification(&msg) {
                     if let Ok(mut message) = message_arc.lock() {
-                        *message = format!("[Notification] {} | {}", Local::now().format("%Y-%m-%d %H:%M:%S"), msg);
+                        *message = format!("{} | {}", Local::now().format("%Y-%m-%d %H:%M:%S"), msg);
                     }
                     continue;
                 }
@@ -167,21 +167,8 @@ impl Application {
                             log::error!("Failed to send WebSocket message: {}", e);
                         }
                     },
-                    InputEvent::Select => {
-                        if current_tab_value == TabSelection::Clients {
-                            *details_focused = true;
-                            *focused_field = crate::ui::DetailsFocus::Volume;
-                        }
-                    },
                     InputEvent::CycleFields => {
-                        if current_tab_value == TabSelection::Clients {
-                            *focused_field = match *focused_field {
-                                crate::ui::DetailsFocus::Volume => crate::ui::DetailsFocus::Muted,
-                                crate::ui::DetailsFocus::Muted => crate::ui::DetailsFocus::Latency,
-                                crate::ui::DetailsFocus::Latency => crate::ui::DetailsFocus::Volume,
-                                _ => crate::ui::DetailsFocus::Volume,
-                            };
-                        }
+                        // Field cycling is handled directly in the input handler
                     },
                     InputEvent::None => {}
                 },
@@ -189,6 +176,12 @@ impl Application {
                     log::error!("Error handling input: {}", e);
                     break;
     }
+            }
+
+            // Automatically focus details when a client is selected
+            if current_tab_value == TabSelection::Clients && !details_focused_value {
+                *details_focused = true;
+                *focused_field = crate::ui::DetailsFocus::Volume;
             }
 
             // Sleep to control UI update rate

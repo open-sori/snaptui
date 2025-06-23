@@ -12,13 +12,6 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let focused_field = app_state.focused_field.lock().unwrap();
     let margin = 1;
 
-    // Determine border color based on focus state
-    let border_color = if *details_focused {
-        Color::Yellow
-    } else {
-        Color::White
-    };
-
     if let Some(data) = &*status_data {
         let mut client_count = 0;
         for group in &data.result.server.groups {
@@ -78,7 +71,7 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                         .block(Block::default()
                             .title(" [ Client Details ] ")
                             .borders(Borders::ALL)
-                            .border_style(Style::default().fg(Color::Yellow))
+                            .border_style(Style::default().fg(if *details_focused { Color::Yellow } else { Color::White }))
                             .padding(Padding::new(3, 3, 1, 1))
                             .title_style(Style::default().fg(Color::Yellow)))
                         .style(Style::default().fg(Color::White));

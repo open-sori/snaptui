@@ -1,4 +1,4 @@
-use crossterm::event::{self, Event, KeyCode};
+use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use std::time::Duration;
 use std::io::Result;
 use std::sync::MutexGuard;
@@ -11,7 +11,6 @@ pub enum InputEvent {
     Up,
     Down,
     Refresh,
-    Select,
     CycleFields,
     None,
 }
@@ -28,28 +27,38 @@ pub fn handle_input(
             match key_event.code {
                 KeyCode::Char('q') | KeyCode::Esc => return Ok(InputEvent::Quit),
                 KeyCode::Char('r') => return Ok(InputEvent::Refresh),
-                KeyCode::Enter => {
+                KeyCode::BackTab => {
+                    // Handle Shift+Tab specifically
                     if **details_focused {
+                        // Shift+Tab: Navigate backward through fields
+                        **focused_field = match **focused_field {
+                            DetailsFocus::Volume => DetailsFocus::Latency,
+                            DetailsFocus::Muted => DetailsFocus::Volume,
+                            DetailsFocus::Latency => DetailsFocus::Muted,
+                            _ => DetailsFocus::Volume,
+                        };
                         return Ok(InputEvent::CycleFields);
-                    } else {
-                        return Ok(InputEvent::Select);
                     }
                 }
                 KeyCode::Tab => {
                     if **details_focused {
+                        // Regular Tab: Navigate forward through fields
+                        **focused_field = match **focused_field {
+                            DetailsFocus::Volume => DetailsFocus::Muted,
+                            DetailsFocus::Muted => DetailsFocus::Latency,
+                            DetailsFocus::Latency => DetailsFocus::Volume,
+                            _ => DetailsFocus::Volume,
+                        };
                         return Ok(InputEvent::CycleFields);
                     } else {
-                        let new_tab = match **current_tab {
-                            TabSelection::Groups => TabSelection::Clients,
-                            TabSelection::Clients => TabSelection::Streams,
-                            TabSelection::Streams => TabSelection::Groups,
-                        };
-                        **current_tab = new_tab.clone();
-                        **selected_index = 0;
-                        return Ok(InputEvent::TabChanged(new_tab));
+                        // If not in details focus, use Tab to switch focus to details
+                        **details_focused = true;
+                        **focused_field = DetailsFocus::Volume;
+                        return Ok(InputEvent::CycleFields);
                     }
                 }
                 KeyCode::Left => {
+                    // Navigate left in tabs
                     let new_tab = match **current_tab {
                         TabSelection::Groups => TabSelection::Streams,
                         TabSelection::Clients => TabSelection::Groups,
@@ -60,6 +69,7 @@ pub fn handle_input(
                     return Ok(InputEvent::TabChanged(new_tab));
                 }
                 KeyCode::Right => {
+                    // Navigate right in tabs
                     let new_tab = match **current_tab {
                         TabSelection::Groups => TabSelection::Clients,
                         TabSelection::Clients => TabSelection::Streams,
@@ -70,12 +80,14 @@ pub fn handle_input(
                     return Ok(InputEvent::TabChanged(new_tab));
                 }
                 KeyCode::Up => {
+                    // Navigate up in list
                     if **selected_index > 0 {
                         **selected_index -= 1;
                         return Ok(InputEvent::Up);
                     }
                 }
                 KeyCode::Down => {
+                    // Navigate down in list
                     if **selected_index < max_items.saturating_sub(1) {
                         **selected_index += 1;
                         return Ok(InputEvent::Down);
