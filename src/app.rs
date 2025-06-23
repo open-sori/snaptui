@@ -28,6 +28,8 @@ impl Application {
             status_data: Arc::clone(&status_data),
             active_tab: Arc::new(Mutex::new(TabSelection::Groups)),
             selected_index: Arc::new(Mutex::new(0)),
+            details_focused: Arc::new(Mutex::new(false)),
+            focused_field: Arc::new(Mutex::new(crate::ui::DetailsFocus::None)),
         };
 
         Ok(Self {
@@ -113,9 +115,16 @@ impl Application {
                 break;
             }
 
-            // Check for input
+            // Prepare all the locks we need
             let mut current_tab = self.app_state.active_tab.lock().unwrap();
             let mut selected_index = self.app_state.selected_index.lock().unwrap();
+            let mut details_focused = self.app_state.details_focused.lock().unwrap();
+            let mut focused_field = self.app_state.focused_field.lock().unwrap();
+
+            // Store the values we need to pass to handle_input
+            let current_tab_value = current_tab.clone();
+            let details_focused_value = *details_focused;
+            let focused_field_value = focused_field.clone();
 
             // Determine the maximum number of items based on the current tab
             let max_items = if let Some(data) = &*self.status_data.lock().unwrap() {
@@ -132,22 +141,54 @@ impl Application {
                 0
             };
 
-            match handle_input(&mut current_tab, &mut selected_index, max_items)? {
-                InputEvent::Quit => break,
-                InputEvent::TabChanged | InputEvent::Up | InputEvent::Down => {
-                    // Update was handled in the function
+            // Call handle_input with the values
+            match handle_input(
+                &mut current_tab,
+                &mut selected_index,
+                max_items,
+                &mut details_focused,
+                &mut focused_field,
+            ) {
+                Ok(event) => match event {
+                    InputEvent::Quit => break,
+                    InputEvent::TabChanged(new_tab) => {
+                        *current_tab = new_tab;
+                    },
+                    InputEvent::Up | InputEvent::Down => {
+                        // Selection was updated in the function
+                    },
+                    InputEvent::Refresh => {
+                        // Create and send a new status request
+                        let status_request = crate::commands::server::getstatus::create_status_request();
+                        if let Err(e) = refresh_tx.send(true).await {
+                            log::error!("Failed to send refresh request: {}", e);
+                        }
+                        if let Err(e) = ws_tx.send(status_request).await {
+                            log::error!("Failed to send WebSocket message: {}", e);
+                        }
+                    },
+                    InputEvent::Select => {
+                        if current_tab_value == TabSelection::Clients {
+                            *details_focused = true;
+                            *focused_field = crate::ui::DetailsFocus::Volume;
+                        }
+                    },
+                    InputEvent::CycleFields => {
+                        if current_tab_value == TabSelection::Clients {
+                            *focused_field = match *focused_field {
+                                crate::ui::DetailsFocus::Volume => crate::ui::DetailsFocus::Muted,
+                                crate::ui::DetailsFocus::Muted => crate::ui::DetailsFocus::Latency,
+                                crate::ui::DetailsFocus::Latency => crate::ui::DetailsFocus::Volume,
+                                _ => crate::ui::DetailsFocus::Volume,
+                            };
+                        }
+                    },
+                    InputEvent::None => {}
                 },
-                InputEvent::Refresh => {
-                    // Create and send a new status request
-                    let status_request = crate::commands::server::getstatus::create_status_request();
-                    if let Err(e) = refresh_tx.send(true).await {
-                        log::error!("Failed to send refresh request: {}", e);
-                    }
-                    if let Err(e) = ws_tx.send(status_request).await {
-                        log::error!("Failed to send WebSocket message: {}", e);
-                    }
-                },
-                InputEvent::None => {}
+                Err(e) => {
+                    log::error!("Error handling input: {}", e);
+                    break;
+    }
             }
 
             // Sleep to control UI update rate

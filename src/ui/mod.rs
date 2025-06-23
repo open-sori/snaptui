@@ -20,6 +20,15 @@ use crossterm::{
 use crate::websocket::ConnectionStatus;
 use crate::models::server::getstatus::GetStatusData;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum DetailsFocus {
+    None,
+    Volume,
+    Muted,
+    Latency,
+    // Add other fields as needed
+}
+
 pub struct AppState {
     pub last_message: Arc<Mutex<String>>,
     pub status: Arc<Mutex<ConnectionStatus>>,
@@ -27,6 +36,8 @@ pub struct AppState {
     pub status_data: Arc<Mutex<Option<GetStatusData>>>,
     pub active_tab: Arc<Mutex<TabSelection>>,
     pub selected_index: Arc<Mutex<usize>>, 
+    pub details_focused: Arc<Mutex<bool>>,
+    pub focused_field: Arc<Mutex<DetailsFocus>>, // Add this line for field focus
 }
 
 pub fn initialize_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {

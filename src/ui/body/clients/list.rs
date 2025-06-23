@@ -23,7 +23,7 @@ pub fn draw_client_list(f: &mut Frame, app_state: &AppState, area: Rect) {
 
                 let item = ListItem::new(content)
                     .style(if current_index == *selected_index {
-                        Style::default().fg(Color::Blue).bold()
+                        Style::default().fg(Color::Magenta).bold()
                     } else {
                         Style::default().fg(Color::White)
                     });
@@ -40,10 +40,11 @@ pub fn draw_client_list(f: &mut Frame, app_state: &AppState, area: Rect) {
         .block(Block::default()
             .title(" [ Clients List ] ")
             .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Magenta))
             .padding(Padding::new(1, 1, 1, 1))
-            .title_style(Style::default().fg(Color::Magenta))) // Changed to pink/magenta
+            .title_style(Style::default().fg(Color::Magenta)))
         .style(Style::default().fg(Color::White))
-        .highlight_style(Style::default().fg(Color::Blue).bold());
+        .highlight_style(Style::default().fg(Color::Magenta).bold());
 
     let inner_area = apply_margin(area, margin);
     f.render_widget(list, inner_area);
