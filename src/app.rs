@@ -87,11 +87,6 @@ impl Application {
                             *ui_data = Some(status);
                         }
 
-                        // Update the last message with the timestamp
-                        if let Ok(mut message) = message_arc.lock() {
-                            *message = format!("Last update: {}", Local::now().format("%Y-%m-%d %H:%M:%S"));
-                        }
-
                         // Extract and store the server version
                         if let Some(version) = extract_server_version(&msg) {
                             if let Ok(mut version_lock) = version_arc.lock() {

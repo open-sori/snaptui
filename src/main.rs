@@ -13,11 +13,12 @@ use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize logging with debug level but filter out websocket info messages
+    // Initialize logging with debug level but filter out websocket and tungstenite info messages
     env_logger::Builder::from_default_env()
         .filter_level(log::LevelFilter::Debug)
         .format_timestamp(None)
-        .filter_module("snaptui::websocket", log::LevelFilter::Warn) // Only show Warn and above for websocket
+        .filter_module("snaptui::websocket", log::LevelFilter::Warn)
+        .filter_module("tungstenite", log::LevelFilter::Warn) // Add this line to filter tungstenite
         .init();
 
     // Parse command line arguments

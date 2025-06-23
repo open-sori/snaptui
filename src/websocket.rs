@@ -47,13 +47,13 @@ pub async fn websocket_task(
 
                 // Send initial ping
                 if let Err(e) = write.send(Message::Ping(vec![].into())).await {
-                    log::error!("Failed to send ping: {}", e);
+                    log::debug!("Failed to send ping: {}", e);
                 }
 
                 // Create and send the status request
                 let status_request = create_status_request();
                 if let Err(e) = write.send(Message::Text(status_request.into())).await {
-                    log::error!("Failed to send status request: {}", e);
+                    log::debug!("Failed to send status request: {}", e);
                 }
 
                 // Handle incoming messages
@@ -61,32 +61,32 @@ pub async fn websocket_task(
                     match msg {
                         Ok(Message::Text(text)) => {
                             if tx.send(text.to_string()).await.is_err() {
-                                log::error!("Failed to send message to channel");
+                                log::debug!("Failed to send message to channel");
                                 break;
                             }
 
                             // Add this check to automatically request status after receiving a notification
                             if is_notification(&text) {
-                                log::info!("Received notification, requesting status update");
+                                log::debug!("Received notification, requesting status update");
                                 let status_request = create_status_request();
                                 if let Err(e) = write.send(Message::Text(status_request.into())).await {
-                                    log::error!("Failed to send status request after notification: {}", e);
+                                    log::debug!("Failed to send status request after notification: {}", e);
                                     break;
                                 }
                             }
                         }
                         Ok(Message::Ping(data)) => {
                             if let Err(e) = write.send(Message::Pong(data)).await {
-                                log::error!("Failed to send pong: {}", e);
+                                log::debug!("Failed to send pong: {}", e);
                                 break;
                             }
                         }
                         Ok(Message::Close(_)) => {
-                            log::info!("WebSocket closed by server");
+                            log::debug!("WebSocket closed by server");
                             break;
                         }
                         Err(e) => {
-                            log::error!("WebSocket read error: {}", e);
+                            log::debug!("WebSocket read error: {}", e);
                             break;
                         }
                         _ => continue,
@@ -94,7 +94,7 @@ pub async fn websocket_task(
                 }
             }
             Err(e) => {
-                log::error!("Connection failed: {}", e);
+                log::debug!("Connection failed: {}", e);
                 update_status(&status_tx, ConnectionStatus::Error(e.to_string())).await;
             }
         }
@@ -116,3 +116,4 @@ fn is_notification(message: &str) -> bool {
     // This is a simple check - you might need to adjust based on actual notification format
     message.contains("\"method\"") && !message.contains("\"result\"")
 }
+
