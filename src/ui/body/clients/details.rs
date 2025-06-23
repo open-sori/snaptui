@@ -15,17 +15,16 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             for client in &group.clients {
                 if client_count == *selected_index {
                     let details = vec![
-                        ListItem::new(format!("ID: {}", client.id)),
-                        ListItem::new(format!("Name: {}", client.config.name)),
+                        ListItem::new(format!("Id: {}", client.id)),
+                        ListItem::new(format!("Instance: {}", client.config.instance)),
                         ListItem::new(format!("Connected: {}", client.connected)),
+                        ListItem::new(format!("Version: {}", client.snapclient.version)),
+                        ListItem::new(format!("Ip: {}", client.host.ip)),
+                        ListItem::new(format!("Mac: {}", client.host.mac)),
+                        ListItem::new(format!("Name: {}", client.config.name)),
                         ListItem::new(format!("Volume: {}%", client.config.volume.percent)),
                         ListItem::new(format!("Muted: {}", client.config.volume.muted)),
-                        ListItem::new(format!("Instance: {}", client.config.instance)),
                         ListItem::new(format!("Latency: {}", client.config.latency)),
-                        ListItem::new(format!("Host: {}", client.host.name)),
-                        ListItem::new(format!("IP: {}", client.host.ip)),
-                        ListItem::new(format!("OS: {}", client.host.os)),
-                        ListItem::new(format!("Snapclient Version: {}", client.snapclient.version)),
                     ];
 
                     let list = List::new(details)

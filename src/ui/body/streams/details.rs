@@ -14,18 +14,22 @@ pub fn draw_stream_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             let stream = &data.result.server.streams[*selected_index];
 
             let details = vec![
-                ListItem::new(format!("ID: {}", stream.id)),
+                ListItem::new(format!("Id: {}", stream.id)),
                 ListItem::new(format!("Status: {}", stream.status)),
-                ListItem::new(format!("URI: {}", stream.uri.raw)),
-                ListItem::new(format!("Scheme: {}", stream.uri.scheme)),
                 ListItem::new(format!("Host: {}", stream.uri.host)),
+                ListItem::new(format!("Name: {}", stream.uri.query.name)),
+                ListItem::new(format!("Scheme: {}", stream.uri.scheme)),
                 ListItem::new(format!("Path: {}", stream.uri.path)),
-                ListItem::new(format!("Can Control: {}", stream.properties.can_control)),
-                ListItem::new(format!("Can Pause: {}", stream.properties.can_pause)),
-                ListItem::new(format!("Can Play: {}", stream.properties.can_play)),
-                ListItem::new(format!("Can Seek: {}", stream.properties.can_seek)),
-                ListItem::new(format!("Can Go Next: {}", stream.properties.can_go_next)),
-                ListItem::new(format!("Can Go Previous: {}", stream.properties.can_go_previous)),
+                ListItem::new(format!("ChunkMs: {}", stream.uri.query.chunk_ms)),
+                ListItem::new(format!("Codec: {}", stream.uri.query.codec)),
+                ListItem::new(format!("SampleFormat: {}", stream.uri.query.sampleformat)),
+                ListItem::new(format!("CanControl: {}", stream.properties.can_control)),
+                ListItem::new(format!("CanPause: {}", stream.properties.can_pause)),
+                ListItem::new(format!("CanPlay: {}", stream.properties.can_play)),
+                ListItem::new(format!("CanSeek: {}", stream.properties.can_seek)),
+                ListItem::new(format!("CanGoNext: {}", stream.properties.can_go_next)),
+                ListItem::new(format!("CanGoPrevious: {}", stream.properties.can_go_previous)),
+                ListItem::new(format!("Uri: {}", stream.uri.raw)),
             ];
 
             let list = List::new(details)
