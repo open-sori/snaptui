@@ -7,7 +7,7 @@ use ratatui::{
 use crate::ui::AppState;
 use crate::ui::utils::apply_margin;
 
-pub fn draw_infos(f: &mut Frame, app_state: &AppState, area: Rect) {
+pub fn draw_events(f: &mut Frame, app_state: &AppState, area: Rect) {
     let message = app_state.last_message.lock().unwrap();
     let margin = 1;
 
@@ -29,7 +29,7 @@ pub fn draw_infos(f: &mut Frame, app_state: &AppState, area: Rect) {
         })
         .collect();
 
-    let info_block = List::new(items)
+    let events_block = List::new(items)
         .style(Style::default().fg(Color::White))
         .block(Block::default()
             .borders(Borders::ALL)
@@ -39,5 +39,5 @@ pub fn draw_infos(f: &mut Frame, app_state: &AppState, area: Rect) {
         .highlight_style(Style::default().fg(Color::White));
 
     let inner_area = apply_margin(area, margin);
-    f.render_widget(info_block, inner_area);
+    f.render_widget(events_block, inner_area);
 }

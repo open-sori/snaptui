@@ -1,5 +1,5 @@
 mod status;
-mod infos;
+mod events;  // Changed from infos to events
 
 use ratatui::{
     prelude::*,
@@ -11,11 +11,11 @@ pub fn draw_footer(f: &mut Frame, app_state: &AppState, area: Rect) {
     let layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(70), // Infos
+            Constraint::Percentage(70), // Events
             Constraint::Percentage(30), // Status
         ])
         .split(area);
 
-    infos::draw_infos(f, app_state, layout[0]);
+    events::draw_events(f, app_state, layout[0]);
     status::draw_status(f, app_state, layout[1]);
 }
