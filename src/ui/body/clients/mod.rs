@@ -1,11 +1,19 @@
 mod list;
-mod details;
+pub mod details;
 
 use ratatui::{
     prelude::*,
     layout::{Rect},
 };
 use crate::ui::AppState;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ClientDetailsFocus {
+    None,
+    Name,
+    Volume,
+    Latency,
+}
 
 pub fn draw_client_list(f: &mut Frame, app_state: &AppState, area: Rect) {
     list::draw_client_list(f, app_state, area);

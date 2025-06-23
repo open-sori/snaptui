@@ -8,6 +8,8 @@ use std::time::Duration;
 use crate::models::server::getstatus::GetStatusData;
 use crate::commands::server::getstatus::extract_server_version;
 use chrono::Local;
+use crate::ui::GroupDetailsFocus;
+use crate::ui::ClientDetailsFocus;
 
 pub struct Application {
     pub terminal: ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
@@ -29,7 +31,8 @@ impl Application {
             active_tab: Arc::new(Mutex::new(TabSelection::Groups)),
             selected_index: Arc::new(Mutex::new(0)),
             details_focused: Arc::new(Mutex::new(false)),
-            focused_field: Arc::new(Mutex::new(crate::ui::DetailsFocus::None)),
+            group_focused_field: Arc::new(Mutex::new(GroupDetailsFocus::None)),
+            client_focused_field: Arc::new(Mutex::new(ClientDetailsFocus::None)),
         };
 
         Ok(Self {
@@ -119,12 +122,8 @@ impl Application {
             let mut current_tab = self.app_state.active_tab.lock().unwrap();
             let mut selected_index = self.app_state.selected_index.lock().unwrap();
             let mut details_focused = self.app_state.details_focused.lock().unwrap();
-            let mut focused_field = self.app_state.focused_field.lock().unwrap();
-
-            // Store the values we need to pass to handle_input
-            let current_tab_value = current_tab.clone();
-            let details_focused_value = *details_focused;
-            let focused_field_value = focused_field.clone();
+            let mut group_focused_field = self.app_state.group_focused_field.lock().unwrap();
+            let mut client_focused_field = self.app_state.client_focused_field.lock().unwrap();
 
             // Determine the maximum number of items based on the current tab
             let max_items = if let Some(data) = &*self.status_data.lock().unwrap() {
@@ -147,15 +146,33 @@ impl Application {
                 &mut selected_index,
                 max_items,
                 &mut details_focused,
-                &mut focused_field,
+                &mut group_focused_field,
+                &mut client_focused_field,
             ) {
                 Ok(event) => match event {
                     InputEvent::Quit => break,
                     InputEvent::TabChanged(new_tab) => {
                         *current_tab = new_tab;
+                        *selected_index = 0;
+                        *details_focused = false;
+                        // Reset focus fields when changing tabs
+                        *group_focused_field = GroupDetailsFocus::None;
+                        *client_focused_field = ClientDetailsFocus::None;
                     },
                     InputEvent::Up | InputEvent::Down => {
                         // Selection was updated in the function
+                        // Set default focus when selecting a new item
+                        if *details_focused {
+                            match *current_tab {
+                                TabSelection::Groups => {
+                *group_focused_field = GroupDetailsFocus::Name;
+                                },
+                                TabSelection::Clients => {
+                                    *client_focused_field = ClientDetailsFocus::Name;
+                                },
+                                _ => {}
+            }
+        }
                     },
                     InputEvent::Refresh => {
                         // Create and send a new status request
@@ -175,13 +192,33 @@ impl Application {
                 Err(e) => {
                     log::error!("Error handling input: {}", e);
                     break;
-    }
+                }
             }
 
-            // Automatically focus details when a client is selected
-            if current_tab_value == TabSelection::Clients && !details_focused_value {
-                *details_focused = true;
-                *focused_field = crate::ui::DetailsFocus::Volume;
+            // Set default focus when details are not focused yet
+            if !*details_focused {
+                match *current_tab {
+                    TabSelection::Groups => {
+                        if let Some(data) = &*self.status_data.lock().unwrap() {
+                            if !data.result.server.groups.is_empty() {
+                                *details_focused = true;
+                                *group_focused_field = GroupDetailsFocus::Name;
+                            }
+                        }
+                    },
+                    TabSelection::Clients => {
+                        if let Some(data) = &*self.status_data.lock().unwrap() {
+                            let client_count: usize = data.result.server.groups.iter()
+                                .map(|g| g.clients.len())
+                                .sum();
+                            if client_count > 0 {
+                                *details_focused = true;
+                                *client_focused_field = ClientDetailsFocus::Name;
+                            }
+                        }
+                    },
+                    _ => {}
+                }
             }
 
             // Sleep to control UI update rate

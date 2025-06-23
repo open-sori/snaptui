@@ -1,6 +1,7 @@
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Paragraph, List, ListItem, Padding},
+    style::{Style, Color},
 };
 use crate::ui::{AppState, utils::apply_margin};
 
@@ -13,31 +14,64 @@ pub fn draw_stream_details(f: &mut Frame, app_state: &AppState, area: Rect) {
         if data.result.server.streams.len() > *selected_index {
             let stream = &data.result.server.streams[*selected_index];
 
-            let details = vec![
-                ListItem::new(format!("Id: {}", stream.id)),
-                ListItem::new(format!("Status: {}", stream.status)),
-                ListItem::new(format!("Host: {}", stream.uri.host)),
-                ListItem::new(format!("Name: {}", stream.uri.query.name)),
-                ListItem::new(format!("Scheme: {}", stream.uri.scheme)),
-                ListItem::new(format!("Path: {}", stream.uri.path)),
-                ListItem::new(format!("ChunkMs: {}", stream.uri.query.chunk_ms)),
-                ListItem::new(format!("Codec: {}", stream.uri.query.codec)),
-                ListItem::new(format!("SampleFormat: {}", stream.uri.query.sampleformat)),
-                ListItem::new(format!("CanControl: {}", stream.properties.can_control)),
-                ListItem::new(format!("CanPause: {}", stream.properties.can_pause)),
-                ListItem::new(format!("CanPlay: {}", stream.properties.can_play)),
-                ListItem::new(format!("CanSeek: {}", stream.properties.can_seek)),
-                ListItem::new(format!("CanGoNext: {}", stream.properties.can_go_next)),
-                ListItem::new(format!("CanGoPrevious: {}", stream.properties.can_go_previous)),
-                ListItem::new(format!("Uri: {}", stream.uri.raw)),
-            ];
+            let mut details = Vec::new();
+
+            // Add all fields with consistent indentation and styling
+            details.push(ListItem::new(format!("  Id: {}", stream.id))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  Status: {}", stream.status))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  Host: {}", stream.uri.host))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  Name: {}", stream.uri.query.name))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  Scheme: {}", stream.uri.scheme))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  Path: {}", stream.uri.path))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  ChunkMs: {}", stream.uri.query.chunk_ms))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  Codec: {}", stream.uri.query.codec))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  SampleFormat: {}", stream.uri.query.sampleformat))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  CanControl: {}", stream.properties.can_control))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  CanPause: {}", stream.properties.can_pause))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  CanPlay: {}", stream.properties.can_play))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  CanSeek: {}", stream.properties.can_seek))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  CanGoNext: {}", stream.properties.can_go_next))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  CanGoPrevious: {}", stream.properties.can_go_previous))
+                .style(Style::default().fg(Color::White)));
+
+            details.push(ListItem::new(format!("  Uri: {}", stream.uri.raw))
+                .style(Style::default().fg(Color::White)));
 
             let list = List::new(details)
                 .block(Block::default()
                     .title(" [ Stream Details ] ")
                     .borders(Borders::ALL)
-                    .padding(Padding::new(3, 3, 1, 1)) // Increased left padding from 1 to 3
-                    .title_style(Style::default().fg(Color::Magenta)))
+                    .border_style(Style::default().fg(Color::Yellow))
+                    .padding(Padding::new(3, 3, 1, 1))
+                    .title_style(Style::default().fg(Color::Yellow)))
                 .style(Style::default().fg(Color::White));
 
             let inner_area = apply_margin(area, margin);
@@ -50,8 +84,9 @@ pub fn draw_stream_details(f: &mut Frame, app_state: &AppState, area: Rect) {
         .block(Block::default()
             .title(" [ Stream Details ] ")
             .borders(Borders::ALL)
-            .padding(Padding::new(3, 3, 1, 1)) // Increased left padding from 1 to 3
-            .title_style(Style::default().fg(Color::Magenta)))
+            .border_style(Style::default().fg(Color::Yellow))
+            .padding(Padding::new(3, 3, 1, 1))
+            .title_style(Style::default().fg(Color::Yellow)))
         .style(Style::default().fg(Color::White));
 
     let inner_area = apply_margin(area, margin);

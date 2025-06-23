@@ -1,9 +1,10 @@
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode};
 use std::time::Duration;
 use std::io::Result;
 use std::sync::MutexGuard;
 use crate::ui::TabSelection;
-use crate::ui::DetailsFocus;
+use crate::ui::GroupDetailsFocus;
+use crate::ui::ClientDetailsFocus;
 
 pub enum InputEvent {
     Quit,
@@ -20,7 +21,8 @@ pub fn handle_input(
     selected_index: &mut MutexGuard<'_, usize>,
     max_items: usize,
     details_focused: &mut MutexGuard<'_, bool>,
-    focused_field: &mut MutexGuard<'_, DetailsFocus>,
+    group_focused_field: &mut MutexGuard<'_, GroupDetailsFocus>,
+    client_focused_field: &mut MutexGuard<'_, ClientDetailsFocus>,
 ) -> Result<InputEvent> {
     if event::poll(Duration::from_millis(10))? {
         if let Event::Key(key_event) = event::read()? {
@@ -28,32 +30,47 @@ pub fn handle_input(
                 KeyCode::Char('q') | KeyCode::Esc => return Ok(InputEvent::Quit),
                 KeyCode::Char('r') => return Ok(InputEvent::Refresh),
                 KeyCode::BackTab => {
-                    // Handle Shift+Tab specifically
                     if **details_focused {
-                        // Shift+Tab: Navigate backward through fields
-                        **focused_field = match **focused_field {
-                            DetailsFocus::Volume => DetailsFocus::Latency,
-                            DetailsFocus::Muted => DetailsFocus::Volume,
-                            DetailsFocus::Latency => DetailsFocus::Muted,
-                            _ => DetailsFocus::Volume,
-                        };
+                        match **current_tab {
+                            TabSelection::Groups => {
+                                let current_field = group_focused_field.clone();
+                                **group_focused_field = get_previous_group_field(&current_field);
+                            },
+                            TabSelection::Clients => {
+                                let current_field = client_focused_field.clone();
+                                **client_focused_field = get_previous_client_field(&current_field);
+                            },
+                            _ => {}
+                        }
                         return Ok(InputEvent::CycleFields);
                     }
                 }
                 KeyCode::Tab => {
                     if **details_focused {
-                        // Regular Tab: Navigate forward through fields
-                        **focused_field = match **focused_field {
-                            DetailsFocus::Volume => DetailsFocus::Muted,
-                            DetailsFocus::Muted => DetailsFocus::Latency,
-                            DetailsFocus::Latency => DetailsFocus::Volume,
-                            _ => DetailsFocus::Volume,
-                        };
+                        match **current_tab {
+                            TabSelection::Groups => {
+                                let current_field = group_focused_field.clone();
+                                **group_focused_field = get_next_group_field(&current_field);
+                            },
+                            TabSelection::Clients => {
+                                let current_field = client_focused_field.clone();
+                                **client_focused_field = get_next_client_field(&current_field);
+                            },
+                            _ => {}
+                        }
                         return Ok(InputEvent::CycleFields);
                     } else {
                         // If not in details focus, use Tab to switch focus to details
                         **details_focused = true;
-                        **focused_field = DetailsFocus::Volume;
+                        match **current_tab {
+                            TabSelection::Groups => {
+                                **group_focused_field = GroupDetailsFocus::Name;
+                            },
+                            TabSelection::Clients => {
+                                **client_focused_field = ClientDetailsFocus::Name;
+                            },
+                            _ => {}
+                        }
                         return Ok(InputEvent::CycleFields);
                     }
                 }
@@ -98,4 +115,42 @@ pub fn handle_input(
         }
     }
     Ok(InputEvent::None)
+}
+
+fn get_next_group_field(current_field: &GroupDetailsFocus) -> GroupDetailsFocus {
+    match current_field {
+        GroupDetailsFocus::Name => GroupDetailsFocus::StreamId,
+        GroupDetailsFocus::StreamId => GroupDetailsFocus::Muted,
+        GroupDetailsFocus::Muted => GroupDetailsFocus::Clients,
+        GroupDetailsFocus::Clients => GroupDetailsFocus::Name,
+        _ => GroupDetailsFocus::Name,
+    }
+}
+
+fn get_previous_group_field(current_field: &GroupDetailsFocus) -> GroupDetailsFocus {
+    match current_field {
+        GroupDetailsFocus::Name => GroupDetailsFocus::Clients,
+        GroupDetailsFocus::StreamId => GroupDetailsFocus::Name,
+        GroupDetailsFocus::Muted => GroupDetailsFocus::StreamId,
+        GroupDetailsFocus::Clients => GroupDetailsFocus::Muted,
+        _ => GroupDetailsFocus::Name,
+    }
+}
+
+fn get_next_client_field(current_field: &ClientDetailsFocus) -> ClientDetailsFocus {
+    match current_field {
+        ClientDetailsFocus::Name => ClientDetailsFocus::Volume,
+        ClientDetailsFocus::Volume => ClientDetailsFocus::Latency,
+        ClientDetailsFocus::Latency => ClientDetailsFocus::Name,
+        _ => ClientDetailsFocus::Name,
+    }
+}
+
+fn get_previous_client_field(current_field: &ClientDetailsFocus) -> ClientDetailsFocus {
+    match current_field {
+        ClientDetailsFocus::Name => ClientDetailsFocus::Latency,
+        ClientDetailsFocus::Volume => ClientDetailsFocus::Name,
+        ClientDetailsFocus::Latency => ClientDetailsFocus::Volume,
+        _ => ClientDetailsFocus::Name,
+    }
 }

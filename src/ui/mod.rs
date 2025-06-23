@@ -1,11 +1,14 @@
 mod headers;
-mod body;
+pub mod body;
 mod footer;
 mod utils;
+
 pub use headers::draw_header;
-pub use body::TabSelection;
 pub use body::draw_body;
 pub use footer::draw_footer;
+pub use body::TabSelection;
+pub use body::GroupDetailsFocus;
+pub use body::ClientDetailsFocus;
 
 use ratatui::{
     prelude::*,
@@ -20,15 +23,6 @@ use crossterm::{
 use crate::websocket::ConnectionStatus;
 use crate::models::server::getstatus::GetStatusData;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum DetailsFocus {
-    None,
-    Volume,
-    Muted,
-    Latency,
-    // Add other fields as needed
-}
-
 pub struct AppState {
     pub last_message: Arc<Mutex<String>>,
     pub status: Arc<Mutex<ConnectionStatus>>,
@@ -37,7 +31,8 @@ pub struct AppState {
     pub active_tab: Arc<Mutex<TabSelection>>,
     pub selected_index: Arc<Mutex<usize>>, 
     pub details_focused: Arc<Mutex<bool>>,
-    pub focused_field: Arc<Mutex<DetailsFocus>>, // Add this line for field focus
+    pub group_focused_field: Arc<Mutex<GroupDetailsFocus>>,
+    pub client_focused_field: Arc<Mutex<ClientDetailsFocus>>,
 }
 
 pub fn initialize_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
@@ -71,9 +66,9 @@ fn create_main_layout(area: Rect) -> Vec<Rect> {
     Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),    // Header
-            Constraint::Min(1),       // Combined tabs and body
-            Constraint::Length(7),    // Footer - increased from 5 to 7
+            Constraint::Length(3),
+            Constraint::Min(1),
+            Constraint::Length(7),
         ])
         .split(area)
         .to_vec()

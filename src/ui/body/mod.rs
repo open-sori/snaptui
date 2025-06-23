@@ -1,6 +1,6 @@
-mod groups;
-mod clients;
-mod streams;
+pub mod groups;
+pub mod clients;
+pub mod streams;
 
 pub mod tabs;
 
@@ -11,6 +11,8 @@ use ratatui::{
 use crate::ui::AppState;
 
 pub use tabs::TabSelection;
+pub use groups::GroupDetailsFocus;
+pub use clients::ClientDetailsFocus;
 
 pub fn draw_body(f: &mut Frame, app_state: &AppState, area: Rect) {
     let layout = Layout::default()

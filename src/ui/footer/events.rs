@@ -32,9 +32,10 @@ pub fn draw_events(f: &mut Frame, app_state: &AppState, area: Rect) {
                     .style(Style::default().fg(Color::White))
         .block(Block::default()
             .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::White))
             .title(" [ Events ] ")
             .padding(Padding::new(2, 2, 1, 1))
-            .title_style(Style::default().fg(Color::Magenta)))
+            .title_style(Style::default().fg(Color::White)))
         .highlight_style(Style::default().fg(Color::White));
 
     let inner_area = apply_margin(area, margin);
