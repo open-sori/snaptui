@@ -64,6 +64,11 @@ impl Application {
 
         tokio::spawn(async move {
             while let Some(msg) = message_rx.recv().await {
+                // Skip messages that are internal log messages
+                if msg.starts_with("[INFO") || msg.starts_with("[DEBUG") {
+                    continue;
+                }
+
                 // First check if this is a notification (which might be different from status updates)
                 if is_notification(&msg) {
                     if let Ok(mut message) = message_arc.lock() {
