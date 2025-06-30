@@ -117,3 +117,4 @@ fn is_notification(message: &str) -> bool {
     message.contains("\"method\"") && !message.contains("\"result\"")
 }
 
+

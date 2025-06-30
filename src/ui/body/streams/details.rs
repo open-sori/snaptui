@@ -35,31 +35,31 @@ pub fn draw_stream_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             details.push(ListItem::new(format!("  Path: {}", stream.uri.path))
                 .style(Style::default().fg(Color::White)));
 
-            details.push(ListItem::new(format!("  ChunkMs: {}", stream.uri.query.chunk_ms))
+            details.push(ListItem::new(format!("  Chunk Ms: {}", stream.uri.query.chunk_ms))
                 .style(Style::default().fg(Color::White)));
 
             details.push(ListItem::new(format!("  Codec: {}", stream.uri.query.codec))
                 .style(Style::default().fg(Color::White)));
 
-            details.push(ListItem::new(format!("  SampleFormat: {}", stream.uri.query.sampleformat))
+            details.push(ListItem::new(format!("  Sample Format: {}", stream.uri.query.sampleformat))
                 .style(Style::default().fg(Color::White)));
 
-            details.push(ListItem::new(format!("  CanControl: {}", stream.properties.can_control))
+            details.push(ListItem::new(format!("  Can Control: {}", stream.properties.can_control))
                 .style(Style::default().fg(Color::White)));
 
-            details.push(ListItem::new(format!("  CanPause: {}", stream.properties.can_pause))
+            details.push(ListItem::new(format!("  Can Pause: {}", stream.properties.can_pause))
                 .style(Style::default().fg(Color::White)));
 
-            details.push(ListItem::new(format!("  CanPlay: {}", stream.properties.can_play))
+            details.push(ListItem::new(format!("  Can Play: {}", stream.properties.can_play))
                 .style(Style::default().fg(Color::White)));
 
-            details.push(ListItem::new(format!("  CanSeek: {}", stream.properties.can_seek))
+            details.push(ListItem::new(format!("  Can Seek: {}", stream.properties.can_seek))
                 .style(Style::default().fg(Color::White)));
 
-            details.push(ListItem::new(format!("  CanGoNext: {}", stream.properties.can_go_next))
+            details.push(ListItem::new(format!("  Can Go Next: {}", stream.properties.can_go_next))
                 .style(Style::default().fg(Color::White)));
 
-            details.push(ListItem::new(format!("  CanGoPrevious: {}", stream.properties.can_go_previous))
+            details.push(ListItem::new(format!("  Can Go Previous: {}", stream.properties.can_go_previous))
                 .style(Style::default().fg(Color::White)));
 
             details.push(ListItem::new(format!("  Uri: {}", stream.uri.raw))

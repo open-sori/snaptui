@@ -23,8 +23,8 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                     details.push(ListItem::new(format!("  Id: {}", client.id)));
                     details.push(ListItem::new(format!("  Connected: {}", client.connected)));
                     details.push(ListItem::new(format!("  Version: {}", client.snapclient.version)));
-                    details.push(ListItem::new(format!("  IP: {}", client.host.ip)));
-                    details.push(ListItem::new(format!("  MAC: {}", client.host.mac)));
+                    details.push(ListItem::new(format!("  Ip: {}", client.host.ip)));
+                    details.push(ListItem::new(format!("  Mac: {}", client.host.mac)));
 
                     // Add name field with potential highlighting
                     let name_text = if *client_focused_field == ClientDetailsFocus::Name {
