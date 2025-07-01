@@ -28,10 +28,12 @@ pub fn handle_input(
     group_focused_field: &mut MutexGuard<'_, GroupDetailsFocus>,
     client_focused_field: &mut MutexGuard<'_, ClientDetailsFocus>,
     is_editing_client_name: bool,
+    is_editing_client_volume: bool,
+    is_editing_client_latency: bool,
 ) -> Result<InputEvent> {
     if event::poll(Duration::from_millis(10))? {
         if let Event::Key(key_event) = event::read()? {
-            if is_editing_client_name {
+            if is_editing_client_name || is_editing_client_volume || is_editing_client_latency {
                 match key_event.code {
                     KeyCode::Enter => return Ok(InputEvent::Confirm),
                     KeyCode::Char(c) => return Ok(InputEvent::Char(c)),
@@ -156,7 +158,8 @@ fn get_previous_group_field(current_field: &GroupDetailsFocus) -> GroupDetailsFo
 fn get_next_client_field(current_field: &ClientDetailsFocus) -> ClientDetailsFocus {
     match current_field {
         ClientDetailsFocus::Name => ClientDetailsFocus::Volume,
-        ClientDetailsFocus::Volume => ClientDetailsFocus::Latency,
+        ClientDetailsFocus::Volume => ClientDetailsFocus::Muted,
+        ClientDetailsFocus::Muted => ClientDetailsFocus::Latency,
         ClientDetailsFocus::Latency => ClientDetailsFocus::Name,
         _ => ClientDetailsFocus::Name,
     }
@@ -166,7 +169,8 @@ fn get_previous_client_field(current_field: &ClientDetailsFocus) -> ClientDetail
     match current_field {
         ClientDetailsFocus::Name => ClientDetailsFocus::Latency,
         ClientDetailsFocus::Volume => ClientDetailsFocus::Name,
-        ClientDetailsFocus::Latency => ClientDetailsFocus::Volume,
+        ClientDetailsFocus::Muted => ClientDetailsFocus::Volume,
+        ClientDetailsFocus::Latency => ClientDetailsFocus::Muted,
         _ => ClientDetailsFocus::Name,
     }
 }

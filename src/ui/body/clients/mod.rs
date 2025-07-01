@@ -12,6 +12,7 @@ pub enum ClientDetailsFocus {
     None,
     Name,
     Volume,
+    Muted,
     Latency,
 }
 

@@ -10,7 +10,9 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let status_data = app_state.status_data.lock().unwrap();
     let selected_index = app_state.selected_index.lock().unwrap();
     let client_focused_field = app_state.client_focused_field.lock().unwrap();
-    let is_editing = *app_state.is_editing_client_name.lock().unwrap();
+    let is_editing_name = *app_state.is_editing_client_name.lock().unwrap();
+    let is_editing_volume = *app_state.is_editing_client_volume.lock().unwrap();
+    let is_editing_latency = *app_state.is_editing_client_latency.lock().unwrap();
     let margin = 1;
 
     if let Some(data) = &*status_data {
@@ -26,7 +28,7 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                     details.push(ListItem::new(format!("  Mac: {}", client.host.mac)));
 
                     let name_text = if *client_focused_field == ClientDetailsFocus::Name {
-                        if is_editing {
+                        if is_editing_name {
                             let editing_name = app_state.editing_client_name.lock().unwrap();
                             let cursor_visible = app_state.cursor_visible.lock().unwrap();
                             let cursor = if *cursor_visible { "_" } else { " " };
@@ -45,11 +47,18 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                     };
                     details.push(ListItem::new(name_text).style(name_style));
 
-                    // Add volume field with potential highlighting
+                    // Add volume field with potential highlighting and editing
                     let volume_text = if *client_focused_field == ClientDetailsFocus::Volume {
-                        format!("> Volume: {:>3}%", client.config.volume.percent)
+                        if is_editing_volume {
+                            let editing_volume = app_state.editing_client_volume.lock().unwrap();
+                            let cursor_visible = app_state.cursor_visible.lock().unwrap();
+                            let cursor = if *cursor_visible { "_" } else { " " };
+                            format!("> Volume: {}{}%", *editing_volume, cursor)
+                        } else {
+                            format!("> Volume: {}%", client.config.volume.percent)
+                        }
                     } else {
-                        format!("  Volume: {:>3}%", client.config.volume.percent)
+                        format!("  Volume: {}%", client.config.volume.percent)
                     };
                     let volume_style = if *client_focused_field == ClientDetailsFocus::Volume {
                         Style::default().fg(Color::Yellow).bold()
@@ -58,9 +67,29 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                     };
                     details.push(ListItem::new(volume_text).style(volume_style));
 
+                    // Add muted field with potential highlighting
+                    let muted_text = if *client_focused_field == ClientDetailsFocus::Muted {
+                        format!("> Muted: {}", client.config.volume.muted)
+                    } else {
+                        format!("  Muted: {}", client.config.volume.muted)
+                    };
+                    let muted_style = if *client_focused_field == ClientDetailsFocus::Muted {
+                        Style::default().fg(Color::Yellow).bold()
+                    } else {
+                        Style::default().fg(Color::White)
+                    };
+                    details.push(ListItem::new(muted_text).style(muted_style));
+
                     // Add latency field with potential highlighting
                     let latency_text = if *client_focused_field == ClientDetailsFocus::Latency {
-                        format!("> Latency: {}", client.config.latency)
+                        if is_editing_latency {
+                            let editing_latency = app_state.editing_client_latency.lock().unwrap();
+                            let cursor_visible = app_state.cursor_visible.lock().unwrap();
+                            let cursor = if *cursor_visible { "_" } else { " " };
+                            format!("> Latency: {}{}", *editing_latency, cursor)
+                        } else {
+                            format!("> Latency: {}", client.config.latency)
+                        }
                     } else {
                         format!("  Latency: {}", client.config.latency)
                     };

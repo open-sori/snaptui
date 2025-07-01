@@ -36,6 +36,10 @@ pub struct AppState {
     pub client_focused_field: Arc<Mutex<ClientDetailsFocus>>,
     pub is_editing_client_name: Arc<Mutex<bool>>,
     pub editing_client_name: Arc<Mutex<String>>,
+    pub is_editing_client_volume: Arc<Mutex<bool>>,
+    pub editing_client_volume: Arc<Mutex<String>>,
+    pub is_editing_client_latency: Arc<Mutex<bool>>,
+    pub editing_client_latency: Arc<Mutex<String>>,
     pub cursor_visible: Arc<Mutex<bool>>,
     pub last_cursor_toggle: Arc<Mutex<Instant>>,
 }
