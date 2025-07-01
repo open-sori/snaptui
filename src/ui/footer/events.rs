@@ -1,16 +1,11 @@
 use crate::ui::utils::apply_margin;
 use crate::ui::AppState;
-use chrono::Local;
 use ratatui::{
     layout::Rect,
     style::{Color, Style},
     widgets::{Block, Borders, List, ListItem, Padding},
     Frame,
 };
-
-fn get_timestamp() -> String {
-    Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
-}
 
 pub fn draw_events(f: &mut Frame, app_state: &AppState, area: Rect) {
     let message = app_state.last_message.lock().unwrap();
@@ -19,7 +14,7 @@ pub fn draw_events(f: &mut Frame, app_state: &AppState, area: Rect) {
     let display_message = if message.is_empty() {
         "Notifications will appear here.".to_string()
     } else {
-        format!("{} - {}", get_timestamp(), &*message)
+        message.clone()
     };
 
     let items: Vec<ListItem> =

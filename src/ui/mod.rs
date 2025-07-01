@@ -24,6 +24,12 @@ use crate::core::websocket::connection::ConnectionStatus;
 use crate::models::server::getstatus::GetStatusData;
 use std::time::Instant;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum PanelFocus {
+    List,
+    Details,
+}
+
 pub struct AppState {
     pub last_message: Arc<Mutex<String>>,
     pub status: Arc<Mutex<ConnectionStatus>>,
@@ -31,7 +37,7 @@ pub struct AppState {
     pub status_data: Arc<Mutex<Option<GetStatusData>>>,
     pub active_tab: Arc<Mutex<TabSelection>>,
     pub selected_index: Arc<Mutex<usize>>,
-    pub details_focused: Arc<Mutex<bool>>,
+    pub focused_panel: Arc<Mutex<PanelFocus>>,
     pub group_focused_field: Arc<Mutex<GroupDetailsFocus>>,
     pub client_focused_field: Arc<Mutex<ClientDetailsFocus>>,
     pub is_editing_client_name: Arc<Mutex<bool>>,

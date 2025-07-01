@@ -3,14 +3,17 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, List, ListItem, Padding},
     style::{Style, Color},
 };
-use crate::ui::{AppState, utils::apply_margin};
+use crate::ui::{AppState, utils::apply_margin, PanelFocus};
 use super::GroupDetailsFocus;
 
 pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let status_data = app_state.status_data.lock().unwrap();
     let selected_index = app_state.selected_index.lock().unwrap();
     let group_focused_field = app_state.group_focused_field.lock().unwrap();
+    let focused_panel = app_state.focused_panel.lock().unwrap();
     let margin = 1;
+
+    let is_details_focused = *focused_panel == PanelFocus::Details;
 
     if let Some(data) = &*status_data {
         if data.result.server.groups.len() > *selected_index {
@@ -23,12 +26,12 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                 .style(Style::default().fg(Color::White)));
 
             // Add name field with potential highlighting
-            let name_text = if *group_focused_field == GroupDetailsFocus::Name {
+            let name_text = if *group_focused_field == GroupDetailsFocus::Name && is_details_focused {
                 format!("> Name: {}", group.name)
             } else {
                 format!("  Name: {}", group.name)
             };
-            let name_style = if *group_focused_field == GroupDetailsFocus::Name {
+            let name_style = if *group_focused_field == GroupDetailsFocus::Name && is_details_focused {
                 Style::default().fg(Color::Yellow).bold()
             } else {
                 Style::default().fg(Color::White)
@@ -36,12 +39,12 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             details.push(ListItem::new(name_text).style(name_style));
 
             // Add stream ID field with potential highlighting
-            let stream_id_text = if *group_focused_field == GroupDetailsFocus::StreamId {
+            let stream_id_text = if *group_focused_field == GroupDetailsFocus::StreamId && is_details_focused {
                 format!("> Stream Id: {}", group.stream_id)
             } else {
                 format!("  Stream Id: {}", group.stream_id)
             };
-            let stream_id_style = if *group_focused_field == GroupDetailsFocus::StreamId {
+            let stream_id_style = if *group_focused_field == GroupDetailsFocus::StreamId && is_details_focused {
                 Style::default().fg(Color::Yellow).bold()
             } else {
                 Style::default().fg(Color::White)
@@ -49,12 +52,12 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             details.push(ListItem::new(stream_id_text).style(stream_id_style));
 
             // Add muted field with potential highlighting
-            let muted_text = if *group_focused_field == GroupDetailsFocus::Muted {
-                format!("> Muted: {:>5}", group.muted)
+            let muted_text = if *group_focused_field == GroupDetailsFocus::Muted && is_details_focused {
+                format!("> Muted: {}", group.muted)
             } else {
-                format!("  Muted: {:>5}", group.muted)
+                format!("  Muted: {}", group.muted)
             };
-            let muted_style = if *group_focused_field == GroupDetailsFocus::Muted {
+            let muted_style = if *group_focused_field == GroupDetailsFocus::Muted && is_details_focused {
                 Style::default().fg(Color::Yellow).bold()
             } else {
                 Style::default().fg(Color::White)
@@ -62,12 +65,12 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             details.push(ListItem::new(muted_text).style(muted_style));
 
             // Add clients section header with potential highlighting
-            let clients_text = if *group_focused_field == GroupDetailsFocus::Clients {
+            let clients_text = if *group_focused_field == GroupDetailsFocus::Clients && is_details_focused {
                 "> Clients:".to_string()
             } else {
                 "  Clients:".to_string()
             };
-            let clients_style = if *group_focused_field == GroupDetailsFocus::Clients {
+            let clients_style = if *group_focused_field == GroupDetailsFocus::Clients && is_details_focused {
                 Style::default().fg(Color::Yellow).bold()
             } else {
                 Style::default().fg(Color::White)

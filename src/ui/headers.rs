@@ -11,7 +11,7 @@ pub fn draw_header(f: &mut Frame, _app_state: &AppState, area: Rect) {
         .style(Style::default().fg(Color::Cyan).bold())
         .alignment(Alignment::Center);
 
-    let help_text = Paragraph::new("Navigation: [ Tabs: ' ← / → ' | List:  ' ↑ / ↓ ' | Details: ' Shift + ( ↑ / ↓ ) ' | Edit: ' e ' | Cancel: ' Esc ' | Quit: ' q ' ]")
+    let help_text = Paragraph::new("Keys: [ Tabs: ←/→ | Focus: Tab | Move: ↑/↓ | Edit: e | Confirm: Enter | Cancel: Esc | Quit: q ]")
         .style(Style::default().fg(Color::Gray))
         .alignment(Alignment::Center);
 

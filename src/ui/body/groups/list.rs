@@ -2,25 +2,29 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Padding},
 };
-use crate::ui::{AppState, utils::apply_margin};
+use crate::ui::{AppState, utils::apply_margin, PanelFocus};
 
 pub fn draw_group_list(f: &mut Frame, app_state: &AppState, area: Rect) {
     let status_data = app_state.status_data.lock().unwrap();
     let selected_index = app_state.selected_index.lock().unwrap();
+    let focused_panel = app_state.focused_panel.lock().unwrap();
     let margin = 1;
 
     let mut items = Vec::new();
 
     if let Some(data) = &*status_data {
         for (i, group) in data.result.server.groups.iter().enumerate() {
-            let content = if i == *selected_index {
+            let is_selected = i == *selected_index;
+            let is_focused = *focused_panel == PanelFocus::List;
+
+            let content = if is_selected && is_focused {
                 format!("> {}", group.id)
             } else {
                 format!("  {}", group.id)
             };
 
             let item = ListItem::new(content)
-                .style(if i == *selected_index {
+                .style(if is_selected {
                     Style::default().fg(Color::Magenta).bold()
                 } else {
                     Style::default().fg(Color::White)

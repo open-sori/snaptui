@@ -1,13 +1,15 @@
 use crate::commands::server::getstatus::{create_status_request, extract_server_version};
-use crate::core::input::events::handle_input;
-use crate::core::input::{check_auto_focus, InputEvent};
+use crate::core::input::events::{
+    get_next_client_field, get_next_group_field, get_previous_client_field,
+    get_previous_group_field, handle_input,
+};
+use crate::core::input::InputEvent;
 use crate::core::websocket::ConnectionStatus;
 use crate::models::server::getstatus::GetStatusData;
 use crate::ui::{
-    initialize_terminal, restore_terminal, AppState, ClientDetailsFocus, GroupDetailsFocus,
-    TabSelection,
+    draw_ui, initialize_terminal, restore_terminal, AppState, ClientDetailsFocus,
+    GroupDetailsFocus, PanelFocus, TabSelection,
 };
-use crate::ui::{draw_ui};
 use serde_json::Value;
 use std::io::Result;
 use std::sync::{Arc, Mutex};
@@ -32,7 +34,7 @@ impl Application {
             status_data: Arc::clone(&status_data),
             active_tab: Arc::new(Mutex::new(TabSelection::Groups)),
             selected_index: Arc::new(Mutex::new(0)),
-            details_focused: Arc::new(Mutex::new(false)),
+            focused_panel: Arc::new(Mutex::new(PanelFocus::List)),
             group_focused_field: Arc::new(Mutex::new(GroupDetailsFocus::None)),
             client_focused_field: Arc::new(Mutex::new(ClientDetailsFocus::None)),
             is_editing_client_name: Arc::new(Mutex::new(false)),
@@ -129,7 +131,7 @@ impl Application {
             {
                 let mut active_tab_guard = self.app_state.active_tab.lock().unwrap();
                 let mut selected_index_guard = self.app_state.selected_index.lock().unwrap();
-                let mut details_focused_guard = self.app_state.details_focused.lock().unwrap();
+                let mut focused_panel_guard = self.app_state.focused_panel.lock().unwrap();
                 let mut group_focused_field_guard =
                     self.app_state.group_focused_field.lock().unwrap();
                 let mut client_focused_field_guard =
@@ -162,22 +164,74 @@ impl Application {
                     &mut active_tab_guard,
                     &mut selected_index_guard,
                     max_items,
-                    &mut details_focused_guard,
-                    &mut group_focused_field_guard,
-                    &mut client_focused_field_guard,
+                    &mut focused_panel_guard,
                     *is_editing_name_guard,
                     *is_editing_volume_guard,
                     *is_editing_latency_guard,
                 );
 
-                let active_tab = active_tab_guard.clone();
-                let details_focused = *details_focused_guard;
                 let client_focused_field = client_focused_field_guard.clone();
 
                 match input_event {
                     Ok(InputEvent::Quit) => break,
+                    Ok(InputEvent::ToggleFocus) => {
+                        *focused_panel_guard = match *focused_panel_guard {
+                            PanelFocus::List => {
+                                // When switching to details, set initial focus
+                                match *active_tab_guard {
+                                    TabSelection::Groups => {
+                                        *group_focused_field_guard = GroupDetailsFocus::Name
+                                    }
+                                    TabSelection::Clients => {
+                                        *client_focused_field_guard = ClientDetailsFocus::Name
+                                    }
+                                    _ => {}
+                                }
+                                PanelFocus::Details
+                            }
+                            PanelFocus::Details => PanelFocus::List,
+                        };
+                    }
+                    Ok(InputEvent::Up) => {
+                        if *focused_panel_guard == PanelFocus::List {
+                            if *selected_index_guard > 0 {
+                                *selected_index_guard -= 1;
+                            }
+                        } else {
+                            match *active_tab_guard {
+                                TabSelection::Groups => {
+                                    *group_focused_field_guard =
+                                        get_previous_group_field(&group_focused_field_guard)
+                                }
+                                TabSelection::Clients => {
+                                    *client_focused_field_guard =
+                                        get_previous_client_field(&client_focused_field_guard)
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    Ok(InputEvent::Down) => {
+                        if *focused_panel_guard == PanelFocus::List {
+                            if *selected_index_guard < max_items.saturating_sub(1) {
+                                *selected_index_guard += 1;
+                            }
+                        } else {
+                            match *active_tab_guard {
+                                TabSelection::Groups => {
+                                    *group_focused_field_guard =
+                                        get_next_group_field(&group_focused_field_guard)
+                                }
+                                TabSelection::Clients => {
+                                    *client_focused_field_guard =
+                                        get_next_client_field(&client_focused_field_guard)
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                     Ok(InputEvent::Edit) => {
-                        if active_tab == TabSelection::Clients && details_focused {
+                        if *focused_panel_guard == PanelFocus::Details {
                             match client_focused_field {
                                 ClientDetailsFocus::Name => {
                                     if !*is_editing_name_guard {
@@ -259,13 +313,18 @@ impl Application {
                                 ClientDetailsFocus::Latency => {
                                     if !*is_editing_latency_guard {
                                         *is_editing_latency_guard = true;
-                                        let mut editing_latency = self.app_state.editing_client_latency.lock().unwrap();
+                                        let mut editing_latency = self
+                                            .app_state
+                                            .editing_client_latency
+                                            .lock()
+                                            .unwrap();
                                         if let Some(data) = &*status_data_guard {
                                             let mut client_count = 0;
                                             'outer: for group in &data.result.server.groups {
                                                 for client in &group.clients {
                                                     if client_count == *selected_index_guard {
-                                                        *editing_latency = client.config.latency.to_string();
+                                                        *editing_latency =
+                                                            client.config.latency.to_string();
                                                         break 'outer;
                                                     }
                                                     client_count += 1;
@@ -342,12 +401,16 @@ impl Application {
                                         }
                                     }
                                 } else {
-                                     log::warn!("Attempted to set volume to an out-of-range value: {}", new_volume);
+                                    log::warn!(
+                                        "Attempted to set volume to an out-of-range value: {}",
+                                        new_volume
+                                    );
                                 }
                             }
                         } else if *is_editing_latency_guard {
                             *is_editing_latency_guard = false;
-                            let new_latency_str = self.app_state.editing_client_latency.lock().unwrap().clone();
+                            let new_latency_str =
+                                self.app_state.editing_client_latency.lock().unwrap().clone();
                             if let Ok(new_latency) = new_latency_str.parse::<i32>() {
                                 if let Some(data) = &*status_data_guard {
                                     let mut client_count = 0;
@@ -357,10 +420,15 @@ impl Application {
                                                 let client_id = client.id.clone();
                                                 let set_latency_request = crate::commands::client::setlatency::create_set_latency_request(
                                                     &client_id,
-                                                    new_latency
+                                                    new_latency,
                                                 );
-                                                if let Err(e) = self.cmd_tx.try_send(set_latency_request) {
-                                                    log::error!("Failed to send set latency command: {}", e);
+                                                if let Err(e) =
+                                                    self.cmd_tx.try_send(set_latency_request)
+                                                {
+                                                    log::error!(
+                                                        "Failed to send set latency command: {}",
+                                                        e
+                                                    );
                                                 }
                                                 break 'outer;
                                             }
@@ -394,8 +462,12 @@ impl Application {
                                     .push(c);
                             }
                         } else if *is_editing_latency_guard {
-                             if c.is_ascii_digit() {
-                                self.app_state.editing_client_latency.lock().unwrap().push(c);
+                            if c.is_ascii_digit() {
+                                self.app_state
+                                    .editing_client_latency
+                                    .lock()
+                                    .unwrap()
+                                    .push(c);
                             }
                         }
                     }
@@ -418,7 +490,7 @@ impl Application {
                         if *is_editing_latency_guard {
                             *is_editing_latency_guard = false;
                         }
-                        *details_focused_guard = false;
+                        *focused_panel_guard = PanelFocus::List;
                     }
                     Ok(_) => {}
                     Err(e) => {
@@ -427,18 +499,8 @@ impl Application {
                     }
                 }
             }
-
-            check_auto_focus(
-                &mut self.app_state.details_focused.lock().unwrap(),
-                &self.app_state.active_tab.lock().unwrap(),
-                &mut self.app_state.group_focused_field.lock().unwrap(),
-                &mut self.app_state.client_focused_field.lock().unwrap(),
-                &self.status_data.lock().unwrap(),
-            );
-
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
-
         restore_terminal()
     }
 }
