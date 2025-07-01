@@ -1,6 +1,6 @@
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph, List, ListItem, Padding},
+    widgets::{Block, Borders, Paragraph, List, ListItem, Padding, Clear},
     style::{Style, Color},
 };
 use crate::ui::{AppState, utils::apply_margin, PanelFocus};
@@ -11,6 +11,9 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let selected_index = app_state.selected_index.lock().unwrap();
     let group_focused_field = app_state.group_focused_field.lock().unwrap();
     let focused_panel = app_state.focused_panel.lock().unwrap();
+    let is_editing_group_stream = *app_state.is_editing_group_stream.lock().unwrap();
+    let is_editing_group_muted = *app_state.is_editing_group_muted.lock().unwrap();
+    let is_editing_name = *app_state.is_editing_group_name.lock().unwrap();
     let margin = 1;
 
     let is_details_focused = *focused_panel == PanelFocus::Details;
@@ -27,7 +30,14 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
             // Add name field with potential highlighting
             let name_text = if *group_focused_field == GroupDetailsFocus::Name && is_details_focused {
-                format!("> Name: {}", group.name)
+                if is_editing_name {
+                    let editing_name = app_state.editing_group_name.lock().unwrap();
+                    let cursor_visible = app_state.cursor_visible.lock().unwrap();
+                    let cursor = if *cursor_visible { "_" } else { " " };
+                    format!("> Name: {}{}", *editing_name, cursor)
+                } else {
+                    format!("> Name: {}", group.name)
+                }
             } else {
                 format!("  Name: {}", group.name)
             };
@@ -94,6 +104,101 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
             let inner_area = apply_margin(area, margin);
             f.render_widget(list, inner_area);
+
+            if is_editing_group_stream {
+                let stream_selection_index = *app_state.stream_selection_index.lock().unwrap();
+
+                let items: Vec<ListItem> = if let Some(data) = &*status_data {
+                    data.result
+                        .server
+                        .streams
+                        .iter()
+                        .enumerate()
+                        .map(|(i, stream)| {
+                            let content = if i == stream_selection_index {
+                                format!("> {}", stream.id)
+                            } else {
+                                format!("  {}", stream.id)
+                            };
+                            ListItem::new(content).style(if i == stream_selection_index {
+                                Style::default().fg(Color::Yellow).bold()
+                            } else {
+                                Style::default().fg(Color::White)
+                            })
+                        })
+                        .collect()
+                } else {
+                    vec![ListItem::new("No streams available")]
+                };
+
+                let list = List::new(items).block(
+                    Block::default()
+                        .title(" [ Select Stream ] ")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::Cyan))
+                        .title_style(Style::default().fg(Color::Cyan)),
+                );
+
+                let popup_layout = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(
+                        [
+                            Constraint::Percentage(30),
+                            Constraint::Percentage(40),
+                            Constraint::Percentage(30),
+                        ]
+                    )
+                    .split(f.area());
+
+                let popup_area = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(30), Constraint::Percentage(40), Constraint::Percentage(30)]).split(popup_layout[1])[1];
+                f.render_widget(Clear, popup_area); //this clears the background
+                f.render_widget(list, popup_area);
+            }
+
+            if is_editing_group_muted {
+                let selection_index = *app_state.group_muted_selection_index.lock().unwrap();
+                let options = vec!["true", "false"];
+
+                let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &opt)| {
+                    let content = if i == selection_index {
+                        format!("> {}", opt)
+                    } else {
+                        format!("  {}", opt)
+                    };
+                    ListItem::new(content).style(if i == selection_index {
+                        Style::default().fg(Color::Yellow).bold()
+                    } else {
+                        Style::default().fg(Color::White)
+                    })
+                }).collect();
+
+                let list = List::new(items).block(
+                    Block::default()
+                        .title(" [ Select Muted Status ] ")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::Cyan))
+                        .title_style(Style::default().fg(Color::Cyan)),
+                );
+
+                let popup_layout = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(
+                        [
+                            Constraint::Percentage(40),
+                            Constraint::Length(4),
+                            Constraint::Percentage(40),
+                        ]
+                    )
+                    .split(f.area());
+
+                let popup_area = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(40), Constraint::Percentage(20), Constraint::Percentage(40)]).split(popup_layout[1])[1];
+                f.render_widget(Clear, popup_area); //this clears the background
+                f.render_widget(list, popup_area);
+            }
             return;
         }
     }

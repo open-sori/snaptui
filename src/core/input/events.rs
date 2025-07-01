@@ -25,13 +25,25 @@ pub fn handle_input(
     selected_index: &mut MutexGuard<'_, usize>,
     _max_items: usize,
     focused_panel: &mut MutexGuard<'_, PanelFocus>,
+    is_editing_group_stream: bool,
+    is_editing_group_muted: bool,
+    is_editing_client_muted: bool,
+    is_editing_group_name: bool,
     is_editing_client_name: bool,
     is_editing_client_volume: bool,
     is_editing_client_latency: bool,
 ) -> Result<InputEvent> {
     if event::poll(Duration::from_millis(10))? {
         if let Event::Key(key_event) = event::read()? {
-            if is_editing_client_name || is_editing_client_volume || is_editing_client_latency {
+            if is_editing_group_stream || is_editing_group_muted || is_editing_client_muted {
+                match key_event.code {
+                    KeyCode::Enter => return Ok(InputEvent::Confirm),
+                    KeyCode::Esc => return Ok(InputEvent::Cancel),
+                    KeyCode::Up => return Ok(InputEvent::Up),
+                    KeyCode::Down => return Ok(InputEvent::Down),
+                    _ => return Ok(InputEvent::None),
+                }
+            } else if is_editing_group_name || is_editing_client_name || is_editing_client_volume || is_editing_client_latency {
                 match key_event.code {
                     KeyCode::Enter => return Ok(InputEvent::Confirm),
                     KeyCode::Char(c) => return Ok(InputEvent::Char(c)),

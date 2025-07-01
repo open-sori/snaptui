@@ -37,10 +37,18 @@ impl Application {
             focused_panel: Arc::new(Mutex::new(PanelFocus::List)),
             group_focused_field: Arc::new(Mutex::new(GroupDetailsFocus::None)),
             client_focused_field: Arc::new(Mutex::new(ClientDetailsFocus::None)),
+            is_editing_group_name: Arc::new(Mutex::new(false)),
+            editing_group_name: Arc::new(Mutex::new(String::new())),
             is_editing_client_name: Arc::new(Mutex::new(false)),
             editing_client_name: Arc::new(Mutex::new(String::new())),
             is_editing_client_volume: Arc::new(Mutex::new(false)),
             editing_client_volume: Arc::new(Mutex::new(String::new())),
+            is_editing_group_stream: Arc::new(Mutex::new(false)),
+            stream_selection_index: Arc::new(Mutex::new(0)),
+            is_editing_group_muted: Arc::new(Mutex::new(false)),
+            group_muted_selection_index: Arc::new(Mutex::new(0)),
+            is_editing_client_muted: Arc::new(Mutex::new(false)),
+            client_muted_selection_index: Arc::new(Mutex::new(0)),
             is_editing_client_latency: Arc::new(Mutex::new(false)),
             editing_client_latency: Arc::new(Mutex::new(String::new())),
             cursor_visible: Arc::new(Mutex::new(true)),
@@ -136,10 +144,18 @@ impl Application {
                     self.app_state.group_focused_field.lock().unwrap();
                 let mut client_focused_field_guard =
                     self.app_state.client_focused_field.lock().unwrap();
+                let mut is_editing_group_name_guard =
+                    self.app_state.is_editing_group_name.lock().unwrap();
                 let mut is_editing_name_guard =
                     self.app_state.is_editing_client_name.lock().unwrap();
                 let mut is_editing_volume_guard =
                     self.app_state.is_editing_client_volume.lock().unwrap();
+                let mut is_editing_group_stream_guard =
+                    self.app_state.is_editing_group_stream.lock().unwrap();
+                let mut is_editing_group_muted_guard =
+                    self.app_state.is_editing_group_muted.lock().unwrap();
+                let mut is_editing_client_muted_guard =
+                    self.app_state.is_editing_client_muted.lock().unwrap();
                 let mut is_editing_latency_guard =
                     self.app_state.is_editing_client_latency.lock().unwrap();
                 let status_data_guard = self.status_data.lock().unwrap();
@@ -165,6 +181,10 @@ impl Application {
                     &mut selected_index_guard,
                     max_items,
                     &mut focused_panel_guard,
+                    *is_editing_group_stream_guard,
+                    *is_editing_group_muted_guard,
+                    *is_editing_client_muted_guard,
+                    *is_editing_group_name_guard,
                     *is_editing_name_guard,
                     *is_editing_volume_guard,
                     *is_editing_latency_guard,
@@ -197,6 +217,21 @@ impl Application {
                             if *selected_index_guard > 0 {
                                 *selected_index_guard -= 1;
                             }
+                        } else if *is_editing_group_stream_guard {
+                            let mut stream_idx = self.app_state.stream_selection_index.lock().unwrap();
+                            if *stream_idx > 0 {
+                                *stream_idx -= 1;
+                            }
+                        } else if *is_editing_group_muted_guard {
+                            let mut selection_idx = self.app_state.group_muted_selection_index.lock().unwrap();
+                            if *selection_idx > 0 {
+                                *selection_idx -= 1;
+                            }
+                        } else if *is_editing_client_muted_guard {
+                            let mut selection_idx = self.app_state.client_muted_selection_index.lock().unwrap();
+                            if *selection_idx > 0 {
+                                *selection_idx -= 1;
+                            }
                         } else {
                             match *active_tab_guard {
                                 TabSelection::Groups => {
@@ -216,6 +251,26 @@ impl Application {
                             if *selected_index_guard < max_items.saturating_sub(1) {
                                 *selected_index_guard += 1;
                             }
+                        } else if *is_editing_group_stream_guard {
+                            let streams_len = if let Some(data) = &*status_data_guard {
+                                data.result.server.streams.len()
+                            } else {
+                                0
+                            };
+                            let mut stream_idx = self.app_state.stream_selection_index.lock().unwrap();
+                            if *stream_idx < streams_len.saturating_sub(1) {
+                                *stream_idx += 1;
+                            }
+                        } else if *is_editing_group_muted_guard {
+                            let mut selection_idx = self.app_state.group_muted_selection_index.lock().unwrap();
+                            if *selection_idx < 1 {
+                                *selection_idx += 1;
+                            }
+                        } else if *is_editing_client_muted_guard {
+                            let mut selection_idx = self.app_state.client_muted_selection_index.lock().unwrap();
+                            if *selection_idx < 1 {
+                                *selection_idx += 1;
+                            }
                         } else {
                             match *active_tab_guard {
                                 TabSelection::Groups => {
@@ -232,105 +287,124 @@ impl Application {
                     }
                     Ok(InputEvent::Edit) => {
                         if *focused_panel_guard == PanelFocus::Details {
-                            match client_focused_field {
-                                ClientDetailsFocus::Name => {
-                                    if !*is_editing_name_guard {
-                                        *is_editing_name_guard = true;
-                                        let mut editing_name =
-                                            self.app_state.editing_client_name.lock().unwrap();
-                                        if let Some(data) = &*status_data_guard {
-                                            let mut client_count = 0;
-                                            'outer: for group in &data.result.server.groups {
-                                                for client in &group.clients {
-                                                    if client_count == *selected_index_guard {
-                                                        *editing_name =
-                                                            client.config.name.clone();
-                                                        break 'outer;
+                            match *active_tab_guard {
+                                TabSelection::Groups => {
+                                    match *group_focused_field_guard {
+                                        GroupDetailsFocus::Name => {
+                                            if !*is_editing_group_name_guard {
+                                                *is_editing_group_name_guard = true;
+                                                let mut editing_name = self.app_state.editing_group_name.lock().unwrap();
+                                                if let Some(data) = &*status_data_guard {
+                                                    if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
+                                                        *editing_name = group.name.clone();
                                                     }
-                                                    client_count += 1;
+                                                }
+                                            }
+                                        },
+                                        GroupDetailsFocus::StreamId => {
+                                            *is_editing_group_stream_guard = true;
+                                            *self.app_state.stream_selection_index.lock().unwrap() = 0;
+                                        },
+                                        GroupDetailsFocus::Muted => {
+                                            *is_editing_group_muted_guard = true;
+                                            let mut selection_idx = self.app_state.group_muted_selection_index.lock().unwrap();
+                                            if let Some(data) = &*status_data_guard {
+                                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
+                                                    *selection_idx = if group.muted { 0 } else { 1 };
                                                 }
                                             }
                                         }
+                                        _ => {}
                                     }
                                 }
-                                ClientDetailsFocus::Volume => {
-                                    if !*is_editing_volume_guard {
-                                        *is_editing_volume_guard = true;
-                                        let mut editing_volume = self
-                                            .app_state
-                                            .editing_client_volume
-                                            .lock()
-                                            .unwrap();
-                                        if let Some(data) = &*status_data_guard {
-                                            let mut client_count = 0;
-                                            'outer: for group in &data.result.server.groups {
-                                                for client in &group.clients {
-                                                    if client_count == *selected_index_guard {
-                                                        *editing_volume = client
-                                                            .config
-                                                            .volume
-                                                            .percent
-                                                            .to_string();
-                                                        break 'outer;
+                                TabSelection::Clients => {
+                                    match client_focused_field {
+                                        ClientDetailsFocus::Name => {
+                                            if !*is_editing_name_guard {
+                                                *is_editing_name_guard = true;
+                                                let mut editing_name =
+                                                    self.app_state.editing_client_name.lock().unwrap();
+                                                if let Some(data) = &*status_data_guard {
+                                                    let mut client_count = 0;
+                                                    'outer: for group in &data.result.server.groups {
+                                                        for client in &group.clients {
+                                                            if client_count == *selected_index_guard {
+                                                                *editing_name =
+                                                                    client.config.name.clone();
+                                                                break 'outer;
+                                                            }
+                                                            client_count += 1;
+                                                        }
                                                     }
-                                                    client_count += 1;
                                                 }
                                             }
                                         }
-                                    }
-                                }
-                                ClientDetailsFocus::Muted => {
-                                    if let Some(data) = &*status_data_guard {
-                                        let mut client_count = 0;
-                                        'outer: for group in &data.result.server.groups {
-                                            for client in &group.clients {
-                                                if client_count == *selected_index_guard {
-                                                    let client_id = client.id.clone();
-                                                    let new_muted_status =
-                                                        !client.config.volume.muted;
-                                                    let current_volume =
-                                                        client.config.volume.percent;
-                                                    let set_volume_request = crate::commands::client::setvolume::create_set_volume_request(
-                                                        &client_id,
-                                                        new_muted_status,
-                                                        current_volume,
-                                                    );
-                                                    if let Err(e) =
-                                                        self.cmd_tx.try_send(set_volume_request)
-                                                    {
-                                                        log::error!(
-                                                            "Failed to send set volume command for mute toggle: {}",
-                                                            e
-                                                        );
+                                        ClientDetailsFocus::Volume => {
+                                            if !*is_editing_volume_guard {
+                                                *is_editing_volume_guard = true;
+                                                let mut editing_volume = self
+                                                    .app_state
+                                                    .editing_client_volume
+                                                    .lock()
+                                                    .unwrap();
+                                                if let Some(data) = &*status_data_guard {
+                                                    let mut client_count = 0;
+                                                    'outer: for group in &data.result.server.groups {
+                                                        for client in &group.clients {
+                                                            if client_count == *selected_index_guard {
+                                                                *editing_volume = client
+                                                                    .config
+                                                                    .volume
+                                                                    .percent
+                                                                    .to_string();
+                                                                break 'outer;
+                                                            }
+                                                            client_count += 1;
+                                                        }
                                                     }
-                                                    break 'outer;
-                                                }
-                                                client_count += 1;
-                                            }
-                                        }
-                                    }
-                                }
-                                ClientDetailsFocus::Latency => {
-                                    if !*is_editing_latency_guard {
-                                        *is_editing_latency_guard = true;
-                                        let mut editing_latency = self
-                                            .app_state
-                                            .editing_client_latency
-                                            .lock()
-                                            .unwrap();
-                                        if let Some(data) = &*status_data_guard {
-                                            let mut client_count = 0;
-                                            'outer: for group in &data.result.server.groups {
-                                                for client in &group.clients {
-                                                    if client_count == *selected_index_guard {
-                                                        *editing_latency =
-                                                            client.config.latency.to_string();
-                                                        break 'outer;
-                                                    }
-                                                    client_count += 1;
                                                 }
                                             }
                                         }
+                                        ClientDetailsFocus::Muted => {
+                                            *is_editing_client_muted_guard = true;
+                                            let mut selection_idx = self.app_state.client_muted_selection_index.lock().unwrap();
+                                            if let Some(data) = &*status_data_guard {
+                                                let mut client_count = 0;
+                                                'outer: for group in &data.result.server.groups {
+                                                    for client in &group.clients {
+                                                        if client_count == *selected_index_guard {
+                                                            *selection_idx = if client.config.volume.muted { 0 } else { 1 };
+                                                            break 'outer;
+                                                        }
+                                                        client_count += 1;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        ClientDetailsFocus::Latency => {
+                                            if !*is_editing_latency_guard {
+                                                *is_editing_latency_guard = true;
+                                                let mut editing_latency = self
+                                                    .app_state
+                                                    .editing_client_latency
+                                                    .lock()
+                                                    .unwrap();
+                                                if let Some(data) = &*status_data_guard {
+                                                    let mut client_count = 0;
+                                                    'outer: for group in &data.result.server.groups {
+                                                        for client in &group.clients {
+                                                            if client_count == *selected_index_guard {
+                                                                *editing_latency =
+                                                                    client.config.latency.to_string();
+                                                                break 'outer;
+                                                            }
+                                                            client_count += 1;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        _ => {}
                                     }
                                 }
                                 _ => {}
@@ -338,7 +412,67 @@ impl Application {
                         }
                     }
                     Ok(InputEvent::Confirm) => {
-                        if *is_editing_name_guard {
+                        if *is_editing_group_name_guard {
+                            *is_editing_group_name_guard = false;
+                            if let Some(data) = &*status_data_guard {
+                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
+                                    let group_id = group.id.clone();
+                                    let new_name = self.app_state.editing_group_name.lock().unwrap().clone();
+                                    let set_name_request = crate::commands::group::setname::create_set_name_request(&group_id, &new_name);
+                                    if let Err(e) = self.cmd_tx.try_send(set_name_request) {
+                                        log::error!("Failed to send set group name command: {}", e);
+                                    }
+                                }
+                            }
+                        } else if *is_editing_group_stream_guard {
+                            *is_editing_group_stream_guard = false;
+                            if let Some(data) = &*status_data_guard {
+                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
+                                    let stream_idx = *self.app_state.stream_selection_index.lock().unwrap();
+                                    if let Some(stream) = data.result.server.streams.get(stream_idx) {
+                                        let set_stream_request = crate::commands::group::setstream::create_set_stream_request(&group.id, &stream.id);
+                                        if let Err(e) = self.cmd_tx.try_send(set_stream_request) {
+                                            log::error!("Failed to send set stream command: {}", e);
+                                        }
+                                    }
+                                }
+                            }
+                        } else if *is_editing_group_muted_guard {
+                            *is_editing_group_muted_guard = false;
+                            let selection_idx = *self.app_state.group_muted_selection_index.lock().unwrap();
+                            let new_mute_status = selection_idx == 0;
+                            if let Some(data) = &*status_data_guard {
+                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
+                                    let set_mute_request = crate::commands::group::setmute::create_set_mute_request(&group.id, new_mute_status);
+                                    if let Err(e) = self.cmd_tx.try_send(set_mute_request) {
+                                        log::error!("Failed to send set group mute command: {}", e);
+                                    }
+                                }
+                            }
+                        } else if *is_editing_client_muted_guard {
+                            *is_editing_client_muted_guard = false;
+                            let selection_idx = *self.app_state.client_muted_selection_index.lock().unwrap();
+                            let new_muted_status = selection_idx == 0;
+                            if let Some(data) = &*status_data_guard {
+                                let mut client_count = 0;
+                                'outer: for group in &data.result.server.groups {
+                                    for client in &group.clients {
+                                        if client_count == *selected_index_guard {
+                                            let set_volume_request = crate::commands::client::setvolume::create_set_volume_request(
+                                                &client.id,
+                                                new_muted_status,
+                                                client.config.volume.percent,
+                                            );
+                                            if let Err(e) = self.cmd_tx.try_send(set_volume_request) {
+                                                log::error!("Failed to send set volume command for mute toggle: {}", e);
+                                            }
+                                            break 'outer;
+                                        }
+                                        client_count += 1;
+                                    }
+                                }
+                            }
+                        } else if *is_editing_name_guard {
                             *is_editing_name_guard = false;
                             if let Some(data) = &*status_data_guard {
                                 let mut client_count = 0;
@@ -440,6 +574,18 @@ impl Application {
                         }
                     }
                     Ok(InputEvent::Cancel) => {
+                        if *is_editing_group_name_guard {
+                            *is_editing_group_name_guard = false;
+                        }
+                        if *is_editing_group_stream_guard {
+                            *is_editing_group_stream_guard = false;
+                        }
+                        if *is_editing_group_muted_guard {
+                            *is_editing_group_muted_guard = false;
+                        }
+                        if *is_editing_client_muted_guard {
+                            *is_editing_client_muted_guard = false;
+                        }
                         if *is_editing_name_guard {
                             *is_editing_name_guard = false;
                         }
@@ -451,7 +597,9 @@ impl Application {
                         }
                     }
                     Ok(InputEvent::Char(c)) => {
-                        if *is_editing_name_guard {
+                        if *is_editing_group_name_guard {
+                            self.app_state.editing_group_name.lock().unwrap().push(c);
+                        } else if *is_editing_name_guard {
                             self.app_state.editing_client_name.lock().unwrap().push(c);
                         } else if *is_editing_volume_guard {
                             if c.is_ascii_digit() {
@@ -472,7 +620,9 @@ impl Application {
                         }
                     }
                     Ok(InputEvent::Backspace) => {
-                        if *is_editing_name_guard {
+                        if *is_editing_group_name_guard {
+                            self.app_state.editing_group_name.lock().unwrap().pop();
+                        } else if *is_editing_name_guard {
                             self.app_state.editing_client_name.lock().unwrap().pop();
                         } else if *is_editing_volume_guard {
                             self.app_state.editing_client_volume.lock().unwrap().pop();
@@ -481,6 +631,18 @@ impl Application {
                         }
                     }
                     Ok(InputEvent::TabChanged(_)) => {
+                        if *is_editing_group_name_guard {
+                            *is_editing_group_name_guard = false;
+                        }
+                        if *is_editing_group_stream_guard {
+                            *is_editing_group_stream_guard = false;
+                        }
+                        if *is_editing_group_muted_guard {
+                            *is_editing_group_muted_guard = false;
+                        }
+                        if *is_editing_client_muted_guard {
+                            *is_editing_client_muted_guard = false;
+                        }
                         if *is_editing_name_guard {
                             *is_editing_name_guard = false;
                         }

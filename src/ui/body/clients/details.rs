@@ -1,6 +1,6 @@
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, Paragraph, List, ListItem, Padding},
+    widgets::{Block, Borders, Paragraph, List, ListItem, Padding, Clear},
     style::{Style, Color},
 };
 use crate::ui::{AppState, utils::apply_margin, PanelFocus};
@@ -14,6 +14,7 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let is_editing_name = *app_state.is_editing_client_name.lock().unwrap();
     let is_editing_volume = *app_state.is_editing_client_volume.lock().unwrap();
     let is_editing_latency = *app_state.is_editing_client_latency.lock().unwrap();
+    let is_editing_muted = *app_state.is_editing_client_muted.lock().unwrap();
     let margin = 1;
 
     let is_details_focused = *focused_panel == PanelFocus::Details;
@@ -114,6 +115,49 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
                     let inner_area = apply_margin(area, margin);
                     f.render_widget(list, inner_area);
+
+                    if is_editing_muted {
+                        let selection_index = *app_state.client_muted_selection_index.lock().unwrap();
+                        let options = vec!["true", "false"];
+
+                        let items: Vec<ListItem> = options.iter().enumerate().map(|(i, &opt)| {
+                            let content = if i == selection_index {
+                                format!("> {}", opt)
+                            } else {
+                                format!("  {}", opt)
+                            };
+                            ListItem::new(content).style(if i == selection_index {
+                                Style::default().fg(Color::Yellow).bold()
+                            } else {
+                                Style::default().fg(Color::White)
+                            })
+                        }).collect();
+
+                        let list = List::new(items).block(
+                            Block::default()
+                                .title(" [ Select Muted Status ] ")
+                                .borders(Borders::ALL)
+                                .border_style(Style::default().fg(Color::Cyan))
+                                .title_style(Style::default().fg(Color::Cyan)),
+                        );
+
+                        let popup_layout = Layout::default()
+                            .direction(Direction::Vertical)
+                            .constraints(
+                                [
+                                    Constraint::Percentage(40),
+                                    Constraint::Length(4),
+                                    Constraint::Percentage(40),
+                                ]
+                            )
+                            .split(f.area());
+
+                        let popup_area = Layout::default()
+                            .direction(Direction::Horizontal)
+                            .constraints([Constraint::Percentage(40), Constraint::Percentage(20), Constraint::Percentage(40)]).split(popup_layout[1])[1];
+                        f.render_widget(Clear, popup_area); //this clears the background
+                        f.render_widget(list, popup_area);
+                    }
                     return;
                 }
                 client_count += 1;
