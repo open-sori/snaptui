@@ -1,7 +1,7 @@
 use tokio::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::io::Result;
-use crate::websocket::ConnectionStatus;
+use crate::core::websocket::ConnectionStatus;
 use crate::ui::{initialize_terminal, restore_terminal, draw_ui, AppState, TabSelection};
 use crate::models::server::getstatus::GetStatusData;
 use std::time::Duration;
@@ -9,6 +9,7 @@ use crate::commands::server::getstatus::extract_server_version;
 use crate::ui::GroupDetailsFocus;
 use crate::ui::ClientDetailsFocus;
 use crate::core::input::{InputEvent, handle_app_input, check_auto_focus};
+
 pub struct Application {
     pub terminal: ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
     pub app_state: AppState,
@@ -43,7 +44,7 @@ impl Application {
         mut message_rx: mpsc::Receiver<String>,
         mut status_rx: mpsc::Receiver<ConnectionStatus>,
     ) -> Result<()> {
-        let status_arc = Arc::clone(&self.app_state.status);
+        let status_arc: Arc<Mutex<ConnectionStatus>> = Arc::clone(&self.app_state.status);
         tokio::spawn(async move {
             while let Some(new_status) = status_rx.recv().await {
                 if let Ok(mut status) = status_arc.lock() {

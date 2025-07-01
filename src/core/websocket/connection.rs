@@ -62,7 +62,6 @@ pub async fn websocket_task(
                             }
 
                             if is_notification(&text) {
-                                log::debug!("Received notification, requesting status update");
                                 let status_request = create_status_request();
                                 if let Err(e) = write.send(Message::Text(status_request.into())).await {
                                     log::debug!("Failed to send status request after notification: {}", e);

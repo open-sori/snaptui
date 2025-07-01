@@ -5,7 +5,7 @@ use ratatui::{
     style::{Style, Color},
 };
 use crate::ui::AppState;
-use crate::websocket::ConnectionStatus;
+use crate::core::websocket::connection::ConnectionStatus;
 use crate::ui::utils::apply_margin;
 
 pub fn draw_status(f: &mut Frame, app_state: &AppState, area: Rect) {

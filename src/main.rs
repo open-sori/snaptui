@@ -1,5 +1,4 @@
 mod core;
-mod websocket;
 mod ui;
 mod commands;
 mod app;
@@ -8,6 +7,7 @@ mod models;
 use std::io::Result;
 use tokio::sync::mpsc;
 use core::cli::args::Args;
+use core::websocket::connection::{websocket_task, ConnectionStatus};
 use clap::Parser;
 
 #[tokio::main]
@@ -28,10 +28,10 @@ async fn main() -> Result<()> {
 
     let mut app = app::Application::new()?;
     let (tx, message_rx) = mpsc::channel::<String>(32);
-    let (status_tx, status_rx) = mpsc::channel::<websocket::ConnectionStatus>(32);
+    let (status_tx, status_rx) = mpsc::channel::<ConnectionStatus>(32);
 
     tokio::spawn(async move {
-        websocket::websocket_task(tx, status_tx, args.host, args.port).await;
+        websocket_task(tx, status_tx, args.host, args.port).await;
     });
 
     app.run(message_rx, status_rx).await?;

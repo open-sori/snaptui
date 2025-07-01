@@ -20,7 +20,7 @@ use crossterm::{
     terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use crate::websocket::ConnectionStatus;
+use crate::core::websocket::connection::ConnectionStatus;
 use crate::models::server::getstatus::GetStatusData;
 
 pub struct AppState {
