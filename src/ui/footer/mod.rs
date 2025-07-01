@@ -11,8 +11,8 @@ pub fn draw_footer(f: &mut Frame, app_state: &AppState, area: Rect) {
     let layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(70),
-            Constraint::Percentage(30),
+            Constraint::Percentage(85),
+            Constraint::Percentage(15),
         ])
         .split(area);
 

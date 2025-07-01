@@ -28,6 +28,7 @@ impl fmt::Display for ConnectionStatus {
 
 pub async fn websocket_task(
     tx: mpsc::Sender<String>,
+    mut cmd_rx: mpsc::Receiver<String>,
     status_tx: mpsc::Sender<ConnectionStatus>,
     host: String,
     port: u16,
@@ -53,37 +54,47 @@ pub async fn websocket_task(
                     log::debug!("Failed to send status request: {}", e);
                 }
 
-                while let Some(msg) = read.next().await {
-                    match msg {
-                        Ok(Message::Text(text)) => {
-                            if tx.send(text.to_string()).await.is_err() {
-                                log::debug!("Failed to send message to channel");
-                                break;
-                            }
+                loop {
+                    tokio::select! {
+                        Some(msg) = read.next() => {
+                            match msg {
+                                Ok(Message::Text(text)) => {
+                                    if tx.send(text.to_string()).await.is_err() {
+                                        log::debug!("Failed to send message to channel");
+                                        break;
+                                    }
 
-                            if is_notification(&text) {
-                                let status_request = create_status_request();
-                                if let Err(e) = write.send(Message::Text(status_request.into())).await {
-                                    log::debug!("Failed to send status request after notification: {}", e);
+                                    if is_notification(&text) {
+                                        let status_request = create_status_request();
+                                        if let Err(e) = write.send(Message::Text(status_request.into())).await {
+                                            log::debug!("Failed to send status request after notification: {}", e);
+                                            break;
+                                        }
+                                    }
+                                }
+                                Ok(Message::Ping(data)) => {
+                                    if let Err(e) = write.send(Message::Pong(data)).await {
+                                        log::debug!("Failed to send pong: {}", e);
+                                        break;
+                                    }
+                                }
+                                Ok(Message::Close(_)) => {
+                                    log::debug!("WebSocket closed by server");
                                     break;
                                 }
+                                Err(e) => {
+                                    log::debug!("WebSocket read error: {}", e);
+                                    break;
+                                }
+                                _ => continue,
                             }
                         }
-                        Ok(Message::Ping(data)) => {
-                            if let Err(e) = write.send(Message::Pong(data)).await {
-                                log::debug!("Failed to send pong: {}", e);
+                        Some(cmd) = cmd_rx.recv() => {
+                            if let Err(e) = write.send(Message::Text(cmd.into())).await {
+                                log::debug!("Failed to send command: {}", e);
                                 break;
                             }
                         }
-                        Ok(Message::Close(_)) => {
-                            log::debug!("WebSocket closed by server");
-                            break;
-                        }
-                        Err(e) => {
-                            log::debug!("WebSocket read error: {}", e);
-                            break;
-                        }
-                        _ => continue,
                     }
                 }
             }

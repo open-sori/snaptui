@@ -10,6 +10,7 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let status_data = app_state.status_data.lock().unwrap();
     let selected_index = app_state.selected_index.lock().unwrap();
     let client_focused_field = app_state.client_focused_field.lock().unwrap();
+    let is_editing = *app_state.is_editing_client_name.lock().unwrap();
     let margin = 1;
 
     if let Some(data) = &*status_data {
@@ -18,19 +19,25 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             for client in &group.clients {
                 if client_count == *selected_index {
                     let mut details = Vec::new();
-                    // Add other fields without highlighting
                     details.push(ListItem::new(format!("  Id: {}", client.id)));
                     details.push(ListItem::new(format!("  Connected: {}", client.connected)));
                     details.push(ListItem::new(format!("  Version: {}", client.snapclient.version)));
                     details.push(ListItem::new(format!("  Ip: {}", client.host.ip)));
                     details.push(ListItem::new(format!("  Mac: {}", client.host.mac)));
 
-                    // Add name field with potential highlighting
                     let name_text = if *client_focused_field == ClientDetailsFocus::Name {
-                        format!("> Name: {}", client.config.name)
+                        if is_editing {
+                            let editing_name = app_state.editing_client_name.lock().unwrap();
+                            let cursor_visible = app_state.cursor_visible.lock().unwrap();
+                            let cursor = if *cursor_visible { "_" } else { " " };
+                            format!("> Name: {}{}", *editing_name, cursor)
+                        } else {
+                            format!("> Name: {}", client.config.name)
+                        }
                     } else {
                         format!("  Name: {}", client.config.name)
                     };
+
                     let name_style = if *client_focused_field == ClientDetailsFocus::Name {
                         Style::default().fg(Color::Yellow).bold()
                     } else {

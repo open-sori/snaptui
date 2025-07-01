@@ -1,7 +1,7 @@
 mod headers;
 mod body;
 mod footer;
-mod utils;
+pub mod utils;
 
 pub use headers::draw_header;
 pub use body::draw_body;
@@ -22,6 +22,7 @@ use crossterm::{
 };
 use crate::core::websocket::connection::ConnectionStatus;
 use crate::models::server::getstatus::GetStatusData;
+use std::time::Instant;
 
 pub struct AppState {
     pub last_message: Arc<Mutex<String>>,
@@ -29,10 +30,14 @@ pub struct AppState {
     pub server_version: Arc<Mutex<String>>,
     pub status_data: Arc<Mutex<Option<GetStatusData>>>,
     pub active_tab: Arc<Mutex<TabSelection>>,
-    pub selected_index: Arc<Mutex<usize>>, 
+    pub selected_index: Arc<Mutex<usize>>,
     pub details_focused: Arc<Mutex<bool>>,
     pub group_focused_field: Arc<Mutex<GroupDetailsFocus>>,
     pub client_focused_field: Arc<Mutex<ClientDetailsFocus>>,
+    pub is_editing_client_name: Arc<Mutex<bool>>,
+    pub editing_client_name: Arc<Mutex<String>>,
+    pub cursor_visible: Arc<Mutex<bool>>,
+    pub last_cursor_toggle: Arc<Mutex<Instant>>,
 }
 
 pub fn initialize_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
