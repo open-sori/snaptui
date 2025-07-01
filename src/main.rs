@@ -2,13 +2,12 @@ mod core;
 mod websocket;
 mod ui;
 mod commands;
-mod cli;
 mod app;
 mod models;
 
 use std::io::Result;
 use tokio::sync::mpsc;
-use cli::Args;
+use core::cli::args::Args;
 use clap::Parser;
 
 #[tokio::main]
@@ -23,7 +22,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
 
     if args.version {
-        println!("{}", cli::version());
+        println!("{}", core::cli::args::version());
         return Ok(());
     }
 

@@ -9,7 +9,6 @@ use crate::commands::server::getstatus::extract_server_version;
 use crate::ui::GroupDetailsFocus;
 use crate::ui::ClientDetailsFocus;
 use crate::core::input::{InputEvent, handle_app_input, check_auto_focus};
-
 pub struct Application {
     pub terminal: ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
     pub app_state: AppState,
