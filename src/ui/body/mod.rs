@@ -18,15 +18,11 @@ pub fn draw_body(f: &mut Frame, app_state: &AppState, area: Rect) {
     let layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(30), // Left column for tabs and list
-            Constraint::Percentage(70), // Right column for details
+            Constraint::Percentage(30),
+            Constraint::Percentage(70),
         ])
         .split(area);
-
-    // Draw tabs and list in the left column
     draw_left_column(f, app_state, layout[0]);
-
-    // Draw details in the right column
     draw_right_column(f, app_state, layout[1]);
 }
 
@@ -39,7 +35,6 @@ fn draw_left_column(f: &mut Frame, app_state: &AppState, area: Rect) {
         ])
         .split(area);
 
-    // Draw tabs in the first section
     tabs::draw_tabs(f, app_state, layout[0]);
 
     let active_tab = app_state.active_tab.lock().unwrap();

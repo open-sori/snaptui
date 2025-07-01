@@ -40,8 +40,8 @@ pub fn draw_client_list(f: &mut Frame, app_state: &AppState, area: Rect) {
         .block(Block::default()
             .title(" [ Clients List ] ")
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Magenta))
             .padding(Padding::new(1, 1, 1, 1))
+            .border_style(Style::default().fg(Color::Magenta))
             .title_style(Style::default().fg(Color::Magenta)))
         .style(Style::default().fg(Color::White))
         .highlight_style(Style::default().fg(Color::Magenta).bold());

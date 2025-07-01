@@ -11,7 +11,6 @@ pub enum InputEvent {
     TabChanged(TabSelection),
     Up,
     Down,
-    Refresh,
     CycleFields,
     None,
 }
@@ -28,7 +27,6 @@ pub fn handle_input(
         if let Event::Key(key_event) = event::read()? {
             match key_event.code {
                 KeyCode::Char('q') | KeyCode::Esc => return Ok(InputEvent::Quit),
-                KeyCode::Char('r') => return Ok(InputEvent::Refresh),
                 KeyCode::BackTab => {
                     if **details_focused {
                         match **current_tab {
@@ -60,7 +58,6 @@ pub fn handle_input(
                         }
                         return Ok(InputEvent::CycleFields);
                     } else {
-                        // If not in details focus, use Tab to switch focus to details
                         **details_focused = true;
                         match **current_tab {
                             TabSelection::Groups => {
@@ -75,7 +72,6 @@ pub fn handle_input(
                     }
                 }
                 KeyCode::Left => {
-                    // Navigate left in tabs
                     let new_tab = match **current_tab {
                         TabSelection::Groups => TabSelection::Streams,
                         TabSelection::Clients => TabSelection::Groups,
@@ -86,7 +82,6 @@ pub fn handle_input(
                     return Ok(InputEvent::TabChanged(new_tab));
                 }
                 KeyCode::Right => {
-                    // Navigate right in tabs
                     let new_tab = match **current_tab {
                         TabSelection::Groups => TabSelection::Clients,
                         TabSelection::Clients => TabSelection::Streams,
@@ -97,14 +92,12 @@ pub fn handle_input(
                     return Ok(InputEvent::TabChanged(new_tab));
                 }
                 KeyCode::Up => {
-                    // Navigate up in list
                     if **selected_index > 0 {
                         **selected_index -= 1;
                         return Ok(InputEvent::Up);
                     }
                 }
                 KeyCode::Down => {
-                    // Navigate down in list
                     if **selected_index < max_items.saturating_sub(1) {
                         **selected_index += 1;
                         return Ok(InputEvent::Down);

@@ -1,5 +1,5 @@
 mod list;
-pub mod details;
+mod details;
 
 use ratatui::{
     prelude::*,

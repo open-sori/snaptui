@@ -54,8 +54,8 @@ pub fn draw_tabs(f: &mut Frame, app_state: &AppState, area: Rect) {
             .borders(Borders::ALL)
             .title(" [ Menu ] ")
             .padding(Padding::new(1, 1, 1, 1))
-            .border_style(Style::default().fg(Color::Blue)) // Changed to blue
-            .title_style(Style::default().fg(Color::Blue))) // Changed to blue
+            .border_style(Style::default().fg(Color::Blue))
+            .title_style(Style::default().fg(Color::Blue)))
         .style(Style::default().fg(Color::White))
         .select(Some(match *active_tab {
             TabSelection::Groups => 0,

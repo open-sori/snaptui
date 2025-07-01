@@ -7,7 +7,6 @@ use crate::input::{handle_input, InputEvent};
 use std::time::Duration;
 use crate::models::server::getstatus::GetStatusData;
 use crate::commands::server::getstatus::extract_server_version;
-
 use crate::ui::GroupDetailsFocus;
 use crate::ui::ClientDetailsFocus;
 
@@ -20,9 +19,7 @@ pub struct Application {
 impl Application {
     pub fn new() -> Result<Self> {
         let terminal = initialize_terminal()?;
-
         let status_data = Arc::new(Mutex::new(None));
-
         let app_state = AppState {
             last_message: Arc::new(Mutex::new(String::from("Waiting for messages..."))),
             status: Arc::new(Mutex::new(ConnectionStatus::Disconnected)),
@@ -46,12 +43,7 @@ impl Application {
         &mut self,
         mut message_rx: mpsc::Receiver<String>,
         mut status_rx: mpsc::Receiver<ConnectionStatus>,
-        refresh_tx: mpsc::Sender<bool>,
     ) -> Result<()> {
-
-
-
-        // Start status update task
         let status_arc = Arc::clone(&self.app_state.status);
         tokio::spawn(async move {
             while let Some(new_status) = status_rx.recv().await {
@@ -61,7 +53,6 @@ impl Application {
             }
         });
 
-        // Start status data update task
         let status_data_arc: Arc<Mutex<Option<GetStatusData>>> = Arc::clone(&self.status_data);
         let message_arc = Arc::clone(&self.app_state.last_message);
         let version_arc = Arc::clone(&self.app_state.server_version);
@@ -69,22 +60,17 @@ impl Application {
 
         tokio::spawn(async move {
             while let Some(msg) = message_rx.recv().await {
-                // Skip messages that are internal log messages
                 if msg.starts_with("[INFO") || msg.starts_with("[DEBUG") {
                     continue;
                 }
 
-
-                // First check if this is a notification
                 if is_notification(&msg) {
                     if let Ok(mut message) = message_arc.lock() {
-
                         *message = msg;
                     }
                     continue;
                 }
 
-                // Then try to parse as GetStatusData
                 match crate::commands::server::getstatus::parse_status_response(&msg) {
                     Ok(status) => {
                         if let Ok(mut data) = status_data_arc.lock() {
@@ -94,19 +80,14 @@ impl Application {
                             *ui_data = Some(status);
                         }
 
-                        // Extract and store the server version
                         if let Some(version) = extract_server_version(&msg) {
                             if let Ok(mut version_lock) = version_arc.lock() {
                                 *version_lock = version;
                             }
-
-
                         }
                     }
                     Err(_) => {
-
                         if let Ok(mut message) = message_arc.lock() {
-
                             *message = format!("Error parsing message");
                         }
                     }
@@ -115,20 +96,17 @@ impl Application {
         });
 
         loop {
-            // Draw UI
             if let Err(e) = draw_ui(&mut self.terminal, &self.app_state) {
                 eprintln!("Error drawing UI: {}", e);
                 break;
             }
 
-            // Prepare all the locks we need
             let mut current_tab = self.app_state.active_tab.lock().unwrap();
             let mut selected_index = self.app_state.selected_index.lock().unwrap();
             let mut details_focused = self.app_state.details_focused.lock().unwrap();
             let mut group_focused_field = self.app_state.group_focused_field.lock().unwrap();
             let mut client_focused_field = self.app_state.client_focused_field.lock().unwrap();
 
-            // Determine the maximum number of items based on the current tab
             let max_items = if let Some(data) = &*self.status_data.lock().unwrap() {
                 match *current_tab {
                     TabSelection::Groups => data.result.server.groups.len(),
@@ -143,7 +121,6 @@ impl Application {
                 0
             };
 
-            // Call handle_input with the values
             match handle_input(
                 &mut current_tab,
                 &mut selected_index,
@@ -158,40 +135,22 @@ impl Application {
                         *current_tab = new_tab;
                         *selected_index = 0;
                         *details_focused = false;
-                        // Reset focus fields when changing tabs
                         *group_focused_field = GroupDetailsFocus::None;
                         *client_focused_field = ClientDetailsFocus::None;
                     },
                     InputEvent::Up | InputEvent::Down => {
-
-                        // Set default focus when selecting a new item
                         if *details_focused {
                             match *current_tab {
                                 TabSelection::Groups => {
-                *group_focused_field = GroupDetailsFocus::Name;
+                                    *group_focused_field = GroupDetailsFocus::Name;
                                 },
                                 TabSelection::Clients => {
                                     *client_focused_field = ClientDetailsFocus::Name;
                                 },
                                 _ => {}
-
-        }
+                            }
                         }
                     },
-                    InputEvent::Refresh => {
-
-
-                        if let Err(e) = refresh_tx.send(true).await {
-                            log::error!("Failed to send refresh request: {}", e);
-                        }
-
-
-
-                    },
-
-
-
-
                     InputEvent::CycleFields | InputEvent::None => {}
                 },
                 Err(e) => {
@@ -200,7 +159,6 @@ impl Application {
                 }
             }
 
-            // Set default focus when details are not focused yet
             if !*details_focused {
                 match *current_tab {
                     TabSelection::Groups => {
@@ -226,7 +184,6 @@ impl Application {
                 }
             }
 
-            // Sleep to control UI update rate
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
@@ -234,10 +191,6 @@ impl Application {
     }
 }
 
-
-// Helper function to check if a message is a notification
 fn is_notification(message: &str) -> bool {
-
-
     message.contains("\"method\"") && !message.contains("\"result\"")
 }

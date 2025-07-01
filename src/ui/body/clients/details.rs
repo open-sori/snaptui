@@ -9,7 +9,6 @@ use super::ClientDetailsFocus;
 pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let status_data = app_state.status_data.lock().unwrap();
     let selected_index = app_state.selected_index.lock().unwrap();
-    let details_focused = app_state.details_focused.lock().unwrap();
     let client_focused_field = app_state.client_focused_field.lock().unwrap();
     let margin = 1;
 
@@ -69,7 +68,7 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                         .block(Block::default()
                             .title(" [ Client Details ] ")
                             .borders(Borders::ALL)
-                            .border_style(Style::default().fg(if *details_focused { Color::Yellow } else { Color::White }))
+                            .border_style(Style::default().fg(Color::Yellow))
             .padding(Padding::new(3, 3, 1, 1))
             .title_style(Style::default().fg(Color::Yellow)))
         .style(Style::default().fg(Color::White));

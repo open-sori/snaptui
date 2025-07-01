@@ -42,21 +42,17 @@ pub async fn websocket_task(
             Ok((ws_stream, _)) => {
                 update_status(&status_tx, ConnectionStatus::Connected).await;
 
-                // Split the websocket stream into a sender and receiver
                 let (mut write, mut read) = ws_stream.split();
 
-                // Send initial ping
                 if let Err(e) = write.send(Message::Ping(vec![].into())).await {
                     log::debug!("Failed to send ping: {}", e);
                 }
 
-                // Create and send the status request
                 let status_request = create_status_request();
                 if let Err(e) = write.send(Message::Text(status_request.into())).await {
                     log::debug!("Failed to send status request: {}", e);
                 }
 
-                // Handle incoming messages
                 while let Some(msg) = read.next().await {
                     match msg {
                         Ok(Message::Text(text)) => {
@@ -65,7 +61,6 @@ pub async fn websocket_task(
                                 break;
                             }
 
-                            // Add this check to automatically request status after receiving a notification
                             if is_notification(&text) {
                                 log::debug!("Received notification, requesting status update");
                                 let status_request = create_status_request();
@@ -110,11 +105,6 @@ async fn update_status(status_tx: &mpsc::Sender<ConnectionStatus>, status: Conne
     }
 }
 
-// Helper function to check if a message is a notification
 fn is_notification(message: &str) -> bool {
-    // Snapcast notifications typically have a "method" field for notifications
-    // This is a simple check - you might need to adjust based on actual notification format
     message.contains("\"method\"") && !message.contains("\"result\"")
 }
-
-

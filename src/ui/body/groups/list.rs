@@ -1,7 +1,6 @@
 use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, Padding},
-    style::{Style, Color},
 };
 use crate::ui::{AppState, utils::apply_margin};
 

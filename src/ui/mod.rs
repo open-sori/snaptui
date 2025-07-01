@@ -1,5 +1,5 @@
 mod headers;
-pub mod body;
+mod body;
 mod footer;
 mod utils;
 

@@ -13,10 +13,8 @@ pub fn draw_stream_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     if let Some(data) = &*status_data {
         if data.result.server.streams.len() > *selected_index {
             let stream = &data.result.server.streams[*selected_index];
-
             let mut details = Vec::new();
 
-            // Add all fields with consistent indentation and styling
             details.push(ListItem::new(format!("  Id: {}", stream.id))
                 .style(Style::default().fg(Color::White)));
 
