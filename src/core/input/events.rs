@@ -12,6 +12,7 @@ pub enum InputEvent {
     Up,
     Down,
     ToggleFocus,
+    ToggleSelection,
     Edit,
     Confirm,
     Cancel,
@@ -28,6 +29,7 @@ pub fn handle_input(
     is_editing_group_stream: bool,
     is_editing_group_muted: bool,
     is_editing_client_muted: bool,
+    is_editing_group_clients: bool,
     is_editing_group_name: bool,
     is_editing_client_name: bool,
     is_editing_client_volume: bool,
@@ -37,6 +39,15 @@ pub fn handle_input(
         if let Event::Key(key_event) = event::read()? {
             if is_editing_group_stream || is_editing_group_muted || is_editing_client_muted {
                 match key_event.code {
+                    KeyCode::Enter => return Ok(InputEvent::Confirm),
+                    KeyCode::Esc => return Ok(InputEvent::Cancel),
+                    KeyCode::Up => return Ok(InputEvent::Up),
+                    KeyCode::Down => return Ok(InputEvent::Down),
+                    _ => return Ok(InputEvent::None),
+                }
+            } else if is_editing_group_clients {
+                match key_event.code {
+                    KeyCode::Char(' ') => return Ok(InputEvent::ToggleSelection),
                     KeyCode::Enter => return Ok(InputEvent::Confirm),
                     KeyCode::Esc => return Ok(InputEvent::Cancel),
                     KeyCode::Up => return Ok(InputEvent::Up),

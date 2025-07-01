@@ -13,6 +13,7 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let focused_panel = app_state.focused_panel.lock().unwrap();
     let is_editing_group_stream = *app_state.is_editing_group_stream.lock().unwrap();
     let is_editing_group_muted = *app_state.is_editing_group_muted.lock().unwrap();
+    let is_editing_group_clients = *app_state.is_editing_group_clients.lock().unwrap();
     let is_editing_name = *app_state.is_editing_group_name.lock().unwrap();
     let margin = 1;
 
@@ -197,6 +198,57 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(40), Constraint::Percentage(20), Constraint::Percentage(40)]).split(popup_layout[1])[1];
                 f.render_widget(Clear, popup_area); //this clears the background
+                f.render_widget(list, popup_area);
+            }
+
+            if is_editing_group_clients {
+                let client_selection_index = *app_state.client_selection_index.lock().unwrap();
+                let selected_clients = app_state.selected_clients.lock().unwrap();
+
+                let all_clients: Vec<_> = status_data.as_ref().unwrap().result.server.groups.iter().flat_map(|g| &g.clients).collect();
+
+                let items: Vec<ListItem> = all_clients
+                    .iter()
+                    .enumerate()
+                    .map(|(i, client)| {
+                        let is_selected = selected_clients.contains(&client.id);
+                        let content = format!(
+                            "{} [{}] {}",
+                            if i == client_selection_index { ">" } else { " " },
+                            if is_selected { "x" } else { " " },
+                            client.id
+                        );
+                        ListItem::new(content).style(if i == client_selection_index {
+                            Style::default().fg(Color::Yellow).bold()
+                        } else {
+                            Style::default().fg(Color::White)
+                        })
+                    })
+                    .collect();
+
+                let list = List::new(items).block(
+                    Block::default()
+                        .title(" [ Select Clients ] ")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::Cyan))
+                        .title_style(Style::default().fg(Color::Cyan)),
+                );
+
+                let popup_layout = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints(
+                        [
+                            Constraint::Percentage(30),
+                            Constraint::Percentage(40),
+                            Constraint::Percentage(30),
+                        ]
+                    )
+                    .split(f.area());
+
+                let popup_area = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(20), Constraint::Percentage(60), Constraint::Percentage(20)]).split(popup_layout[1])[1];
+                f.render_widget(Clear, popup_area);
                 f.render_widget(list, popup_area);
             }
             return;

@@ -49,6 +49,9 @@ impl Application {
             group_muted_selection_index: Arc::new(Mutex::new(0)),
             is_editing_client_muted: Arc::new(Mutex::new(false)),
             client_muted_selection_index: Arc::new(Mutex::new(0)),
+            is_editing_group_clients: Arc::new(Mutex::new(false)),
+            selected_clients: Arc::new(Mutex::new(Vec::new())),
+            client_selection_index: Arc::new(Mutex::new(0)),
             is_editing_client_latency: Arc::new(Mutex::new(false)),
             editing_client_latency: Arc::new(Mutex::new(String::new())),
             cursor_visible: Arc::new(Mutex::new(true)),
@@ -156,6 +159,8 @@ impl Application {
                     self.app_state.is_editing_group_muted.lock().unwrap();
                 let mut is_editing_client_muted_guard =
                     self.app_state.is_editing_client_muted.lock().unwrap();
+                let mut is_editing_group_clients_guard =
+                    self.app_state.is_editing_group_clients.lock().unwrap();
                 let mut is_editing_latency_guard =
                     self.app_state.is_editing_client_latency.lock().unwrap();
                 let status_data_guard = self.status_data.lock().unwrap();
@@ -184,6 +189,7 @@ impl Application {
                     *is_editing_group_stream_guard,
                     *is_editing_group_muted_guard,
                     *is_editing_client_muted_guard,
+                    *is_editing_group_clients_guard,
                     *is_editing_group_name_guard,
                     *is_editing_name_guard,
                     *is_editing_volume_guard,
@@ -232,6 +238,11 @@ impl Application {
                             if *selection_idx > 0 {
                                 *selection_idx -= 1;
                             }
+                        } else if *is_editing_group_clients_guard {
+                            let mut client_idx = self.app_state.client_selection_index.lock().unwrap();
+                            if *client_idx > 0 {
+                                *client_idx -= 1;
+                            }
                         } else {
                             match *active_tab_guard {
                                 TabSelection::Groups => {
@@ -270,6 +281,16 @@ impl Application {
                             let mut selection_idx = self.app_state.client_muted_selection_index.lock().unwrap();
                             if *selection_idx < 1 {
                                 *selection_idx += 1;
+                            }
+                        } else if *is_editing_group_clients_guard {
+                            let clients_len = if let Some(data) = &*status_data_guard {
+                                data.result.server.groups.iter().flat_map(|g| &g.clients).count()
+                            } else {
+                                0
+                            };
+                            let mut client_idx = self.app_state.client_selection_index.lock().unwrap();
+                            if *client_idx < clients_len.saturating_sub(1) {
+                                *client_idx += 1;
                             }
                         } else {
                             match *active_tab_guard {
@@ -311,6 +332,15 @@ impl Application {
                                             if let Some(data) = &*status_data_guard {
                                                 if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
                                                     *selection_idx = if group.muted { 0 } else { 1 };
+                                                }
+                                            }
+                                        },
+                                        GroupDetailsFocus::Clients => {
+                                            *is_editing_group_clients_guard = true;
+                                            let mut selected_clients = self.app_state.selected_clients.lock().unwrap();
+                                            if let Some(data) = &*status_data_guard {
+                                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
+                                                    *selected_clients = group.clients.iter().map(|c| c.id.clone()).collect();
                                                 }
                                             }
                                         }
@@ -411,6 +441,22 @@ impl Application {
                             }
                         }
                     }
+                    Ok(InputEvent::ToggleSelection) => {
+                        if *is_editing_group_clients_guard {
+                            if let Some(data) = &*status_data_guard {
+                                let mut selected_clients = self.app_state.selected_clients.lock().unwrap();
+                                let client_idx = *self.app_state.client_selection_index.lock().unwrap();
+                                let all_clients: Vec<_> = data.result.server.groups.iter().flat_map(|g| &g.clients).collect();
+                                if let Some(client) = all_clients.get(client_idx) {
+                                    if selected_clients.contains(&client.id) {
+                                        selected_clients.retain(|id| id != &client.id);
+                                    } else {
+                                        selected_clients.push(client.id.clone());
+                                    }
+                                }
+                            }
+                        }
+                    }
                     Ok(InputEvent::Confirm) => {
                         if *is_editing_group_name_guard {
                             *is_editing_group_name_guard = false;
@@ -469,6 +515,17 @@ impl Application {
                                             break 'outer;
                                         }
                                         client_count += 1;
+                                    }
+                                }
+                            }
+                        } else if *is_editing_group_clients_guard {
+                            *is_editing_group_clients_guard = false;
+                            if let Some(data) = &*status_data_guard {
+                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
+                                    let selected_clients = self.app_state.selected_clients.lock().unwrap().clone();
+                                    let set_clients_request = crate::commands::group::setclients::create_set_clients_request(&group.id, selected_clients);
+                                    if let Err(e) = self.cmd_tx.try_send(set_clients_request) {
+                                        log::error!("Failed to send set clients command: {}", e);
                                     }
                                 }
                             }
@@ -586,6 +643,9 @@ impl Application {
                         if *is_editing_client_muted_guard {
                             *is_editing_client_muted_guard = false;
                         }
+                        if *is_editing_group_clients_guard {
+                            *is_editing_group_clients_guard = false;
+                        }
                         if *is_editing_name_guard {
                             *is_editing_name_guard = false;
                         }
@@ -642,6 +702,9 @@ impl Application {
                         }
                         if *is_editing_client_muted_guard {
                             *is_editing_client_muted_guard = false;
+                        }
+                        if *is_editing_group_clients_guard {
+                            *is_editing_group_clients_guard = false;
                         }
                         if *is_editing_name_guard {
                             *is_editing_name_guard = false;
