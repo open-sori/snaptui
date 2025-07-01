@@ -8,9 +8,7 @@ use std::time::Duration;
 use crate::commands::server::getstatus::extract_server_version;
 use crate::ui::GroupDetailsFocus;
 use crate::ui::ClientDetailsFocus;
-use crate::input::InputEvent;
-
-mod input_handler;
+use crate::core::input::{InputEvent, handle_app_input, check_auto_focus};
 
 pub struct Application {
     pub terminal: ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
@@ -103,7 +101,7 @@ impl Application {
                 break;
             }
 
-            match input_handler::handle_app_input(
+            match handle_app_input(
                 &mut self.app_state.active_tab.lock().unwrap(),
                 &mut self.app_state.selected_index.lock().unwrap(),
                 &mut self.app_state.details_focused.lock().unwrap(),
@@ -124,7 +122,7 @@ impl Application {
                 }
             }
 
-            input_handler::check_auto_focus(
+            check_auto_focus(
                 &mut self.app_state.details_focused.lock().unwrap(),
                 &self.app_state.active_tab.lock().unwrap(),
                 &mut self.app_state.group_focused_field.lock().unwrap(),

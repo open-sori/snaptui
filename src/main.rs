@@ -1,4 +1,4 @@
-mod input;
+mod core;
 mod websocket;
 mod ui;
 mod commands;

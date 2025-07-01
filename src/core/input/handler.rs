@@ -1,7 +1,7 @@
 use std::sync::MutexGuard;
 use std::io::Result;
 use crate::ui::{TabSelection, GroupDetailsFocus, ClientDetailsFocus};
-use crate::input::{handle_input, InputEvent};
+use super::events::{handle_input, InputEvent};
 use crate::models::server::getstatus::GetStatusData;
 
 pub fn handle_app_input(
