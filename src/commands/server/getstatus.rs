@@ -17,10 +17,6 @@ pub fn parse_status_response(response: &str) -> Result<GetStatusData, Error> {
     match serde_json::from_str::<GetStatusData>(response) {
         Ok(status) => Ok(status),
         Err(e) => {
-            // Log the raw response for debugging
-            log::debug!("Failed to parse response: {}", response);
-            log::debug!("Parsing error: {}", e);
-
             // If parsing as GetStatusData fails, check if it's valid JSON
             if serde_json::from_str::<Value>(response).is_ok() {
                 // It's valid JSON but not matching our expected format
@@ -45,8 +41,7 @@ pub fn extract_server_version(response: &str) -> Option<String> {
     // Fallback to manual extraction if the above fails
     let parsed: Value = match serde_json::from_str(response) {
         Ok(v) => v,
-        Err(e) => {
-            log::debug!("Failed to parse JSON for version extraction: {}", e);
+        Err(_) => {
             return None;
         }
     };

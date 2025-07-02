@@ -87,7 +87,6 @@ impl Application {
 
         tokio::spawn(async move {
             while let Some(msg) = message_rx.recv().await {
-                log::debug!("Received WebSocket message: {}", msg);
                 if let Ok(json_value) = serde_json::from_str::<Value>(&msg) {
                     if let Some(result) = json_value.get("result") {
                         if result.get("server").is_some() {
@@ -105,15 +104,10 @@ impl Application {
                             }
                         } else {
                             let status_request = create_status_request();
-                            if let Err(e) = cmd_tx_clone.send(status_request).await {
-                                log::error!(
-                                    "Failed to send status request after command: {}",
-                                    e
-                                );
+                            if let Err(_) = cmd_tx_clone.send(status_request).await {
                             }
                         }
                     } else if json_value.get("method").is_some() {
-                        log::debug!("Identified as notification, updating last_message.");
                         if let Ok(mut message) = message_arc.lock() {
                             *message = msg.clone();
                         }
@@ -133,8 +127,7 @@ impl Application {
                 }
             }
 
-            if let Err(e) = draw_ui(&mut self.terminal, &self.app_state) {
-                log::error!("Error drawing UI: {}", e);
+            if let Err(_) = draw_ui(&mut self.terminal, &self.app_state) {
                 break;
             }
 
@@ -465,8 +458,7 @@ impl Application {
                                     let group_id = group.id.clone();
                                     let new_name = self.app_state.editing_group_name.lock().unwrap().clone();
                                     let set_name_request = crate::commands::group::setname::create_set_name_request(&group_id, &new_name);
-                                    if let Err(e) = self.cmd_tx.try_send(set_name_request) {
-                                        log::error!("Failed to send set group name command: {}", e);
+                                    if let Err(_) = self.cmd_tx.try_send(set_name_request) {
                                     }
                                 }
                             }
@@ -477,8 +469,7 @@ impl Application {
                                     let stream_idx = *self.app_state.stream_selection_index.lock().unwrap();
                                     if let Some(stream) = data.result.server.streams.get(stream_idx) {
                                         let set_stream_request = crate::commands::group::setstream::create_set_stream_request(&group.id, &stream.id);
-                                        if let Err(e) = self.cmd_tx.try_send(set_stream_request) {
-                                            log::error!("Failed to send set stream command: {}", e);
+                                        if let Err(_) = self.cmd_tx.try_send(set_stream_request) {
                                         }
                                     }
                                 }
@@ -490,8 +481,7 @@ impl Application {
                             if let Some(data) = &*status_data_guard {
                                 if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
                                     let set_mute_request = crate::commands::group::setmute::create_set_mute_request(&group.id, new_mute_status);
-                                    if let Err(e) = self.cmd_tx.try_send(set_mute_request) {
-                                        log::error!("Failed to send set group mute command: {}", e);
+                                    if let Err(_) = self.cmd_tx.try_send(set_mute_request) {
                                     }
                                 }
                             }
@@ -509,8 +499,7 @@ impl Application {
                                                 new_muted_status,
                                                 client.config.volume.percent,
                                             );
-                                            if let Err(e) = self.cmd_tx.try_send(set_volume_request) {
-                                                log::error!("Failed to send set volume command for mute toggle: {}", e);
+                                            if let Err(_) = self.cmd_tx.try_send(set_volume_request) {
                                             }
                                             break 'outer;
                                         }
@@ -524,8 +513,7 @@ impl Application {
                                 if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
                                     let selected_clients = self.app_state.selected_clients.lock().unwrap().clone();
                                     let set_clients_request = crate::commands::group::setclients::create_set_clients_request(&group.id, selected_clients);
-                                    if let Err(e) = self.cmd_tx.try_send(set_clients_request) {
-                                        log::error!("Failed to send set clients command: {}", e);
+                                    if let Err(_) = self.cmd_tx.try_send(set_clients_request) {
                                     }
                                 }
                             }
@@ -546,13 +534,9 @@ impl Application {
                                             let set_name_request = crate::commands::client::setname::create_set_name_request(
                                                 &client_id, &new_name,
                                             );
-                                            if let Err(e) =
+                                            if let Err(_) =
                                                 self.cmd_tx.try_send(set_name_request)
                                             {
-                                                log::error!(
-                                                    "Failed to send set name command: {}",
-                                                    e
-                                                );
                                             }
                                             break 'outer;
                                         }
@@ -577,13 +561,9 @@ impl Application {
                                                         client.config.volume.muted,
                                                         new_volume,
                                                     );
-                                                    if let Err(e) =
+                                                    if let Err(_) =
                                                         self.cmd_tx.try_send(set_volume_request)
                                                     {
-                                                        log::error!(
-                                                            "Failed to send set volume command: {}",
-                                                            e
-                                                        );
                                                     }
                                                     break 'outer;
                                                 }
@@ -592,10 +572,6 @@ impl Application {
                                         }
                                     }
                                 } else {
-                                    log::warn!(
-                                        "Attempted to set volume to an out-of-range value: {}",
-                                        new_volume
-                                    );
                                 }
                             }
                         } else if *is_editing_latency_guard {
@@ -613,13 +589,9 @@ impl Application {
                                                     &client_id,
                                                     new_latency,
                                                 );
-                                                if let Err(e) =
+                                                if let Err(_) =
                                                     self.cmd_tx.try_send(set_latency_request)
                                                 {
-                                                    log::error!(
-                                                        "Failed to send set latency command: {}",
-                                                        e
-                                                    );
                                                 }
                                                 break 'outer;
                                             }
@@ -718,8 +690,7 @@ impl Application {
                         *focused_panel_guard = PanelFocus::List;
                     }
                     Ok(_) => {}
-                    Err(e) => {
-                        log::error!("Error handling input: {}", e);
+                    Err(_) => {
                         break;
                     }
                 }
