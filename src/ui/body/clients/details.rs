@@ -18,6 +18,7 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let margin = 1;
 
     let is_details_focused = *focused_panel == PanelFocus::Details;
+    let title = if is_details_focused { " [ * Client Details * ] " } else { " [ Client Details ] " };
 
     if let Some(data) = &*status_data {
         let mut client_count = 0;
@@ -51,7 +52,6 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                     };
                     details.push(ListItem::new(name_text).style(name_style));
 
-                    // Add volume field with potential highlighting and editing
                     let volume_text = if *client_focused_field == ClientDetailsFocus::Volume && is_details_focused {
                         if is_editing_volume {
                             let editing_volume = app_state.editing_client_volume.lock().unwrap();
@@ -71,7 +71,6 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                     };
                     details.push(ListItem::new(volume_text).style(volume_style));
 
-                    // Add muted field with potential highlighting
                     let muted_text = if *client_focused_field == ClientDetailsFocus::Muted && is_details_focused {
                         format!("> Muted: {}", client.config.volume.muted)
                     } else {
@@ -84,7 +83,6 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                     };
                     details.push(ListItem::new(muted_text).style(muted_style));
 
-                    // Add latency field with potential highlighting
                     let latency_text = if *client_focused_field == ClientDetailsFocus::Latency && is_details_focused {
                         if is_editing_latency {
                             let editing_latency = app_state.editing_client_latency.lock().unwrap();
@@ -106,12 +104,12 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
                     let list = List::new(details)
                         .block(Block::default()
-                            .title(" [ Client Details ] ")
+                            .title(title)
                             .borders(Borders::ALL)
                             .border_style(Style::default().fg(Color::Yellow))
-            .padding(Padding::new(3, 3, 1, 1))
-            .title_style(Style::default().fg(Color::Yellow)))
-        .style(Style::default().fg(Color::White));
+                            .padding(Padding::new(3, 3, 1, 1))
+                            .title_style(Style::default().fg(Color::Yellow)))
+                        .style(Style::default().fg(Color::White));
 
                     let inner_area = apply_margin(area, margin);
                     f.render_widget(list, inner_area);
@@ -155,7 +153,7 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                         let popup_area = Layout::default()
                             .direction(Direction::Horizontal)
                             .constraints([Constraint::Percentage(40), Constraint::Percentage(20), Constraint::Percentage(40)]).split(popup_layout[1])[1];
-                        f.render_widget(Clear, popup_area); //this clears the background
+                        f.render_widget(Clear, popup_area);
                         f.render_widget(list, popup_area);
                     }
                     return;
@@ -167,7 +165,7 @@ pub fn draw_client_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
     let details = Paragraph::new("Select a client to see details")
         .block(Block::default()
-            .title(" [ Client Details ] ")
+            .title(title)
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Yellow))
             .padding(Padding::new(3, 3, 1, 1))

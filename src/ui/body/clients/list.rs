@@ -10,6 +10,9 @@ pub fn draw_client_list(f: &mut Frame, app_state: &AppState, area: Rect) {
     let focused_panel = app_state.focused_panel.lock().unwrap();
     let margin = 1;
 
+    let is_focused = *focused_panel == PanelFocus::List;
+    let title = if is_focused { " [ * Clients List * ] " } else { " [ Clients List ] " };
+
     let mut items = Vec::new();
     let mut current_index = 0;
 
@@ -17,7 +20,6 @@ pub fn draw_client_list(f: &mut Frame, app_state: &AppState, area: Rect) {
         for group in &data.result.server.groups {
             for client in &group.clients {
                 let is_selected = current_index == *selected_index;
-                let is_focused = *focused_panel == PanelFocus::List;
 
                 let content = if is_selected && is_focused {
                     format!("> {}", client.id)
@@ -42,7 +44,7 @@ pub fn draw_client_list(f: &mut Frame, app_state: &AppState, area: Rect) {
 
     let list = List::new(items)
         .block(Block::default()
-            .title(" [ Clients List ] ")
+            .title(title)
             .borders(Borders::ALL)
             .padding(Padding::new(1, 1, 1, 1))
             .border_style(Style::default().fg(Color::Magenta))

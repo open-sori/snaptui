@@ -18,6 +18,7 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let margin = 1;
 
     let is_details_focused = *focused_panel == PanelFocus::Details;
+    let title = if is_details_focused { " [ * Group Details * ] " } else { " [ Group Details ] " };
 
     if let Some(data) = &*status_data {
         if data.result.server.groups.len() > *selected_index {
@@ -25,11 +26,9 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
             let mut details = Vec::new();
 
-            // Add group ID field
             details.push(ListItem::new(format!("  Id: {}", group.id))
                 .style(Style::default().fg(Color::White)));
 
-            // Add name field with potential highlighting
             let name_text = if *group_focused_field == GroupDetailsFocus::Name && is_details_focused {
                 if is_editing_name {
                     let editing_name = app_state.editing_group_name.lock().unwrap();
@@ -49,7 +48,6 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             };
             details.push(ListItem::new(name_text).style(name_style));
 
-            // Add stream ID field with potential highlighting
             let stream_id_text = if *group_focused_field == GroupDetailsFocus::StreamId && is_details_focused {
                 format!("> Stream Id: {}", group.stream_id)
             } else {
@@ -62,7 +60,6 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             };
             details.push(ListItem::new(stream_id_text).style(stream_id_style));
 
-            // Add muted field with potential highlighting
             let muted_text = if *group_focused_field == GroupDetailsFocus::Muted && is_details_focused {
                 format!("> Muted: {}", group.muted)
             } else {
@@ -75,7 +72,6 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             };
             details.push(ListItem::new(muted_text).style(muted_style));
 
-            // Add clients section header with potential highlighting
             let clients_text = if *group_focused_field == GroupDetailsFocus::Clients && is_details_focused {
                 "> Clients:".to_string()
             } else {
@@ -88,7 +84,6 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
             };
             details.push(ListItem::new(clients_text).style(clients_style));
 
-            // Add each client as a sub-item
             for client in &group.clients {
                 details.push(ListItem::new(format!("  - Id: {}", client.id)));
                 details.push(ListItem::new(format!("    Connected: {}", client.connected)));
@@ -96,7 +91,7 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
             let list = List::new(details)
                 .block(Block::default()
-                    .title(" [ Group Details ] ")
+                    .title(title)
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(Color::Yellow))
                     .padding(Padding::new(3, 3, 1, 1))
@@ -154,7 +149,7 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                 let popup_area = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(30), Constraint::Percentage(40), Constraint::Percentage(30)]).split(popup_layout[1])[1];
-                f.render_widget(Clear, popup_area); //this clears the background
+                f.render_widget(Clear, popup_area);
                 f.render_widget(list, popup_area);
             }
 
@@ -197,7 +192,7 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
                 let popup_area = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(40), Constraint::Percentage(20), Constraint::Percentage(40)]).split(popup_layout[1])[1];
-                f.render_widget(Clear, popup_area); //this clears the background
+                f.render_widget(Clear, popup_area);
                 f.render_widget(list, popup_area);
             }
 
@@ -257,7 +252,7 @@ pub fn draw_group_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
     let details = Paragraph::new("Select a group to see details")
         .block(Block::default()
-            .title(" [ Group Details ] ")
+            .title(title)
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Yellow))
             .padding(Padding::new(3, 3, 1, 1))

@@ -5,11 +5,21 @@ use crate::core::input::events::{
 };
 use crate::core::input::InputEvent;
 use crate::core::websocket::ConnectionStatus;
-use crate::models::server::getstatus::GetStatusData;
+use crate::models::client::{
+    onconnect::ClientOnConnect, ondisconnect::ClientOnDisconnect,
+    onlatencychanged::ClientOnLatencyChanged, onnamechanged::ClientOnNameChanged,
+    onvolumechanged::ClientOnVolumeChanged,
+};
+use crate::models::group::{
+    onmute::GroupOnMute, onnamechanged::GroupOnNameChanged, onstreamchanged::GroupOnStreamChanged,
+};
+use crate::models::server::{getstatus::GetStatusData, onupdate::ServerOnUpdate};
+use crate::models::stream::{onproperties::StreamOnProperties, onupdate::StreamOnUpdate};
 use crate::ui::{
     draw_ui, initialize_terminal, restore_terminal, AppState, ClientDetailsFocus,
     GroupDetailsFocus, PanelFocus, TabSelection,
 };
+use chrono::Local;
 use serde_json::Value;
 use std::io::Result;
 use std::sync::{Arc, Mutex};
@@ -28,13 +38,14 @@ impl Application {
         let terminal = initialize_terminal()?;
         let status_data = Arc::new(Mutex::new(None));
         let app_state = AppState {
-            last_message: Arc::new(Mutex::new(String::from(""))),
+            events: Arc::new(Mutex::new(Vec::new())),
             status: Arc::new(Mutex::new(ConnectionStatus::Disconnected)),
             server_version: Arc::new(Mutex::new(String::new())),
             status_data: Arc::clone(&status_data),
             active_tab: Arc::new(Mutex::new(TabSelection::Groups)),
             selected_index: Arc::new(Mutex::new(0)),
             focused_panel: Arc::new(Mutex::new(PanelFocus::List)),
+            events_scroll_offset: Arc::new(Mutex::new(0)),
             group_focused_field: Arc::new(Mutex::new(GroupDetailsFocus::None)),
             client_focused_field: Arc::new(Mutex::new(ClientDetailsFocus::None)),
             is_editing_group_name: Arc::new(Mutex::new(false)),
@@ -81,7 +92,7 @@ impl Application {
         });
 
         let status_data_arc: Arc<Mutex<Option<GetStatusData>>> = Arc::clone(&self.status_data);
-        let message_arc = Arc::clone(&self.app_state.last_message);
+        let events_arc = Arc::clone(&self.app_state.events);
         let version_arc = Arc::clone(&self.app_state.server_version);
         let cmd_tx_clone = self.cmd_tx.clone();
 
@@ -103,16 +114,121 @@ impl Application {
                                 }
                             }
                         } else {
-                            if let Ok(mut message) = message_arc.lock() {
-                                *message = msg.clone();
-                            }
                             let status_request = create_status_request();
-                            if let Err(_) = cmd_tx_clone.send(status_request).await {
-                            }
+                            if let Err(_) = cmd_tx_clone.send(status_request).await {}
                         }
-                    } else if json_value.get("method").is_some() {
-                        if let Ok(mut message) = message_arc.lock() {
-                            *message = msg.clone();
+                    } else if let Some(method_val) = json_value.get("method") {
+                        if let Some(method_str) = method_val.as_str() {
+                            let mut events = events_arc.lock().unwrap();
+                            let now = Local::now();
+                            let formatted_time = now.format("%Y-%m-%d %H:%M:%S");
+
+                            let event_string = match method_str {
+                                "Client.OnConnect" => {
+                                    match serde_json::from_str::<ClientOnConnect>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Client.OnConnect: {}", e)),
+                                    }
+                                }
+                                "Client.OnDisconnect" => {
+                                    match serde_json::from_str::<ClientOnDisconnect>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Client.OnDisconnect: {}", e)),
+                                    }
+                                }
+                                "Client.OnVolumeChanged" => {
+                                    match serde_json::from_str::<ClientOnVolumeChanged>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Client.OnVolumeChanged: {}", e)),
+                                    }
+                                }
+                                "Client.OnLatencyChanged" => {
+                                    match serde_json::from_str::<ClientOnLatencyChanged>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Client.OnLatencyChanged: {}", e)),
+                                    }
+                                }
+                                "Client.OnNameChanged" => {
+                                    match serde_json::from_str::<ClientOnNameChanged>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Client.OnNameChanged: {}", e)),
+                                    }
+                                }
+                                "Group.OnMute" => {
+                                    match serde_json::from_str::<GroupOnMute>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Group.OnMute: {}", e)),
+                                    }
+                                }
+                                "Group.OnStreamChanged" => {
+                                    match serde_json::from_str::<GroupOnStreamChanged>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Group.OnStreamChanged: {}", e)),
+                                    }
+                                }
+                                "Group.OnNameChanged" => {
+                                    match serde_json::from_str::<GroupOnNameChanged>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Group.OnNameChanged: {}", e)),
+                                    }
+                                }
+                                "Stream.OnUpdate" => {
+                                    match serde_json::from_str::<StreamOnUpdate>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Stream.OnUpdate: {}", e)),
+                                    }
+                                }
+                                "Stream.OnProperties" => {
+                                    match serde_json::from_str::<StreamOnProperties>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Stream.OnProperties: {}", e)),
+                                    }
+                                }
+                                "Server.OnUpdate" => {
+                                    match serde_json::from_str::<ServerOnUpdate>(&msg) {
+                                        Ok(n) => {
+                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                        }
+                                        Err(e) => Some(format!("Error parsing Server.OnUpdate: {}", e)),
+                                    }
+                                }
+                                _ => None,
+                            };
+
+                            if let Some(event) = event_string {
+                                events.push(event);
+                            }
                         }
                     }
                 }
@@ -198,21 +314,29 @@ impl Application {
                     Ok(InputEvent::Quit) => break,
                     Ok(InputEvent::ToggleFocus) => {
                         *focused_panel_guard = match *focused_panel_guard {
-                            PanelFocus::List => {
-                                // When switching to details, set initial focus
-                                match *active_tab_guard {
-                                    TabSelection::Groups => {
-                                        *group_focused_field_guard = GroupDetailsFocus::Name
-                                    }
-                                    TabSelection::Clients => {
-                                        *client_focused_field_guard = ClientDetailsFocus::Name
-                                    }
-                                    _ => {}
-                                }
-                                PanelFocus::Details
-                            }
+                            PanelFocus::List => PanelFocus::Details,
+                            PanelFocus::Details => PanelFocus::Events,
+                            PanelFocus::Events => PanelFocus::List,
+                        };
+                    }
+                    Ok(InputEvent::ReverseToggleFocus) => {
+                        *focused_panel_guard = match *focused_panel_guard {
+                            PanelFocus::List => PanelFocus::Events,
+                            PanelFocus::Events => PanelFocus::Details,
                             PanelFocus::Details => PanelFocus::List,
                         };
+                    }
+                    Ok(InputEvent::Left) => {
+                        if *focused_panel_guard == PanelFocus::Events {
+                            let mut offset = self.app_state.events_scroll_offset.lock().unwrap();
+                            *offset = offset.saturating_sub(1);
+                        }
+                    }
+                    Ok(InputEvent::Right) => {
+                        if *focused_panel_guard == PanelFocus::Events {
+                            let mut offset = self.app_state.events_scroll_offset.lock().unwrap();
+                            *offset += 1;
+                        }
                     }
                     Ok(InputEvent::Up) => {
                         if *focused_panel_guard == PanelFocus::List {
@@ -220,22 +344,26 @@ impl Application {
                                 *selected_index_guard -= 1;
                             }
                         } else if *is_editing_group_stream_guard {
-                            let mut stream_idx = self.app_state.stream_selection_index.lock().unwrap();
+                            let mut stream_idx =
+                                self.app_state.stream_selection_index.lock().unwrap();
                             if *stream_idx > 0 {
                                 *stream_idx -= 1;
                             }
                         } else if *is_editing_group_muted_guard {
-                            let mut selection_idx = self.app_state.group_muted_selection_index.lock().unwrap();
+                            let mut selection_idx =
+                                self.app_state.group_muted_selection_index.lock().unwrap();
                             if *selection_idx > 0 {
                                 *selection_idx -= 1;
                             }
                         } else if *is_editing_client_muted_guard {
-                            let mut selection_idx = self.app_state.client_muted_selection_index.lock().unwrap();
+                            let mut selection_idx =
+                                self.app_state.client_muted_selection_index.lock().unwrap();
                             if *selection_idx > 0 {
                                 *selection_idx -= 1;
                             }
                         } else if *is_editing_group_clients_guard {
-                            let mut client_idx = self.app_state.client_selection_index.lock().unwrap();
+                            let mut client_idx =
+                                self.app_state.client_selection_index.lock().unwrap();
                             if *client_idx > 0 {
                                 *client_idx -= 1;
                             }
@@ -264,27 +392,36 @@ impl Application {
                             } else {
                                 0
                             };
-                            let mut stream_idx = self.app_state.stream_selection_index.lock().unwrap();
+                            let mut stream_idx =
+                                self.app_state.stream_selection_index.lock().unwrap();
                             if *stream_idx < streams_len.saturating_sub(1) {
                                 *stream_idx += 1;
                             }
                         } else if *is_editing_group_muted_guard {
-                            let mut selection_idx = self.app_state.group_muted_selection_index.lock().unwrap();
+                            let mut selection_idx =
+                                self.app_state.group_muted_selection_index.lock().unwrap();
                             if *selection_idx < 1 {
                                 *selection_idx += 1;
                             }
                         } else if *is_editing_client_muted_guard {
-                            let mut selection_idx = self.app_state.client_muted_selection_index.lock().unwrap();
+                            let mut selection_idx =
+                                self.app_state.client_muted_selection_index.lock().unwrap();
                             if *selection_idx < 1 {
                                 *selection_idx += 1;
                             }
                         } else if *is_editing_group_clients_guard {
                             let clients_len = if let Some(data) = &*status_data_guard {
-                                data.result.server.groups.iter().flat_map(|g| &g.clients).count()
+                                data.result
+                                    .server
+                                    .groups
+                                    .iter()
+                                    .flat_map(|g| &g.clients)
+                                    .count()
                             } else {
                                 0
                             };
-                            let mut client_idx = self.app_state.client_selection_index.lock().unwrap();
+                            let mut client_idx =
+                                self.app_state.client_selection_index.lock().unwrap();
                             if *client_idx < clients_len.saturating_sub(1) {
                                 *client_idx += 1;
                             }
@@ -305,101 +442,80 @@ impl Application {
                     Ok(InputEvent::Edit) => {
                         if *focused_panel_guard == PanelFocus::Details {
                             match *active_tab_guard {
-                                TabSelection::Groups => {
-                                    match *group_focused_field_guard {
-                                        GroupDetailsFocus::Name => {
-                                            if !*is_editing_group_name_guard {
-                                                *is_editing_group_name_guard = true;
-                                                let mut editing_name = self.app_state.editing_group_name.lock().unwrap();
-                                                if let Some(data) = &*status_data_guard {
-                                                    if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
-                                                        *editing_name = group.name.clone();
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        GroupDetailsFocus::StreamId => {
-                                            *is_editing_group_stream_guard = true;
-                                            *self.app_state.stream_selection_index.lock().unwrap() = 0;
-                                        },
-                                        GroupDetailsFocus::Muted => {
-                                            *is_editing_group_muted_guard = true;
-                                            let mut selection_idx = self.app_state.group_muted_selection_index.lock().unwrap();
+                                TabSelection::Groups => match *group_focused_field_guard {
+                                    GroupDetailsFocus::Name => {
+                                        if !*is_editing_group_name_guard {
+                                            *is_editing_group_name_guard = true;
+                                            let mut editing_name = self
+                                                .app_state
+                                                .editing_group_name
+                                                .lock()
+                                                .unwrap();
                                             if let Some(data) = &*status_data_guard {
-                                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
-                                                    *selection_idx = if group.muted { 0 } else { 1 };
-                                                }
-                                            }
-                                        },
-                                        GroupDetailsFocus::Clients => {
-                                            *is_editing_group_clients_guard = true;
-                                            let mut selected_clients = self.app_state.selected_clients.lock().unwrap();
-                                            if let Some(data) = &*status_data_guard {
-                                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
-                                                    *selected_clients = group.clients.iter().map(|c| c.id.clone()).collect();
+                                                if let Some(group) = data
+                                                    .result
+                                                    .server
+                                                    .groups
+                                                    .get(*selected_index_guard)
+                                                {
+                                                    *editing_name = group.name.clone();
                                                 }
                                             }
                                         }
-                                        _ => {}
                                     }
-                                }
-                                TabSelection::Clients => {
-                                    match client_focused_field {
-                                        ClientDetailsFocus::Name => {
-                                            if !*is_editing_name_guard {
-                                                *is_editing_name_guard = true;
-                                                let mut editing_name =
-                                                    self.app_state.editing_client_name.lock().unwrap();
-                                                if let Some(data) = &*status_data_guard {
-                                                    let mut client_count = 0;
-                                                    'outer: for group in &data.result.server.groups {
-                                                        for client in &group.clients {
-                                                            if client_count == *selected_index_guard {
-                                                                *editing_name =
-                                                                    client.config.name.clone();
-                                                                break 'outer;
-                                                            }
-                                                            client_count += 1;
-                                                        }
-                                                    }
-                                                }
+                                    GroupDetailsFocus::StreamId => {
+                                        *is_editing_group_stream_guard = true;
+                                        *self.app_state.stream_selection_index.lock().unwrap() = 0;
+                                    }
+                                    GroupDetailsFocus::Muted => {
+                                        *is_editing_group_muted_guard = true;
+                                        let mut selection_idx = self
+                                            .app_state
+                                            .group_muted_selection_index
+                                            .lock()
+                                            .unwrap();
+                                        if let Some(data) = &*status_data_guard {
+                                            if let Some(group) =
+                                                data.result.server.groups.get(*selected_index_guard)
+                                            {
+                                                *selection_idx = if group.muted { 0 } else { 1 };
                                             }
                                         }
-                                        ClientDetailsFocus::Volume => {
-                                            if !*is_editing_volume_guard {
-                                                *is_editing_volume_guard = true;
-                                                let mut editing_volume = self
-                                                    .app_state
-                                                    .editing_client_volume
-                                                    .lock()
-                                                    .unwrap();
-                                                if let Some(data) = &*status_data_guard {
-                                                    let mut client_count = 0;
-                                                    'outer: for group in &data.result.server.groups {
-                                                        for client in &group.clients {
-                                                            if client_count == *selected_index_guard {
-                                                                *editing_volume = client
-                                                                    .config
-                                                                    .volume
-                                                                    .percent
-                                                                    .to_string();
-                                                                break 'outer;
-                                                            }
-                                                            client_count += 1;
-                                                        }
-                                                    }
-                                                }
+                                    }
+                                    GroupDetailsFocus::Clients => {
+                                        *is_editing_group_clients_guard = true;
+                                        let mut selected_clients =
+                                            self.app_state.selected_clients.lock().unwrap();
+                                        if let Some(data) = &*status_data_guard {
+                                            if let Some(group) =
+                                                data.result.server.groups.get(*selected_index_guard)
+                                            {
+                                                *selected_clients = group
+                                                    .clients
+                                                    .iter()
+                                                    .map(|c| c.id.clone())
+                                                    .collect();
                                             }
                                         }
-                                        ClientDetailsFocus::Muted => {
-                                            *is_editing_client_muted_guard = true;
-                                            let mut selection_idx = self.app_state.client_muted_selection_index.lock().unwrap();
+                                    }
+                                    _ => {}
+                                },
+                                TabSelection::Clients => match client_focused_field {
+                                    ClientDetailsFocus::Name => {
+                                        if !*is_editing_name_guard {
+                                            *is_editing_name_guard = true;
+                                            let mut editing_name = self
+                                                .app_state
+                                                .editing_client_name
+                                                .lock()
+                                                .unwrap();
                                             if let Some(data) = &*status_data_guard {
                                                 let mut client_count = 0;
                                                 'outer: for group in &data.result.server.groups {
                                                     for client in &group.clients {
                                                         if client_count == *selected_index_guard {
-                                                            *selection_idx = if client.config.volume.muted { 0 } else { 1 };
+                                                            *editing_name =
+                                                                client.config.name.clone();
                                                             break 'outer;
                                                         }
                                                         client_count += 1;
@@ -407,32 +523,88 @@ impl Application {
                                                 }
                                             }
                                         }
-                                        ClientDetailsFocus::Latency => {
-                                            if !*is_editing_latency_guard {
-                                                *is_editing_latency_guard = true;
-                                                let mut editing_latency = self
-                                                    .app_state
-                                                    .editing_client_latency
-                                                    .lock()
-                                                    .unwrap();
-                                                if let Some(data) = &*status_data_guard {
-                                                    let mut client_count = 0;
-                                                    'outer: for group in &data.result.server.groups {
-                                                        for client in &group.clients {
-                                                            if client_count == *selected_index_guard {
-                                                                *editing_latency =
-                                                                    client.config.latency.to_string();
-                                                                break 'outer;
-                                                            }
-                                                            client_count += 1;
+                                    }
+                                    ClientDetailsFocus::Volume => {
+                                        if !*is_editing_volume_guard {
+                                            *is_editing_volume_guard = true;
+                                            let mut editing_volume = self
+                                                .app_state
+                                                .editing_client_volume
+                                                .lock()
+                                                .unwrap();
+                                            if let Some(data) = &*status_data_guard {
+                                                let mut client_count = 0;
+                                                'outer: for group in &data.result.server.groups {
+                                                    for client in &group.clients {
+                                                        if client_count == *selected_index_guard {
+                                                            *editing_volume = client
+                                                                .config
+                                                                .volume
+                                                                .percent
+                                                                .to_string();
+                                                            break 'outer;
                                                         }
+                                                        client_count += 1;
                                                     }
                                                 }
                                             }
                                         }
-                                        _ => {}
                                     }
-                                }
+                                    ClientDetailsFocus::Muted => {
+                                        *is_editing_client_muted_guard = true;
+                                        let mut selection_idx = self
+                                            .app_state
+                                            .client_muted_selection_index
+                                            .lock()
+                                            .unwrap();
+                                        if let Some(data) = &*status_data_guard {
+                                            let mut client_count = 0;
+                                            'outer: for group in &data.result.server.groups {
+                                                for client in &group.clients {
+                                                    if client_count == *selected_index_guard {
+                                                        *selection_idx = if client
+                                                            .config
+                                                            .volume
+                                                            .muted
+                                                        {
+                                                            0
+                                                        } else {
+                                                            1
+                                                        };
+                                                        break 'outer;
+                                                    }
+                                                    client_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    ClientDetailsFocus::Latency => {
+                                        if !*is_editing_latency_guard {
+                                            *is_editing_latency_guard = true;
+                                            let mut editing_latency = self
+                                                .app_state
+                                                .editing_client_latency
+                                                .lock()
+                                                .unwrap();
+                                            if let Some(data) = &*status_data_guard {
+                                                let mut client_count = 0;
+                                                'outer: for group in &data.result.server.groups {
+                                                    for client in &group.clients {
+                                                        if client_count == *selected_index_guard {
+                                                            *editing_latency = client
+                                                                .config
+                                                                .latency
+                                                                .to_string();
+                                                            break 'outer;
+                                                        }
+                                                        client_count += 1;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                },
                                 _ => {}
                             }
                         }
@@ -440,9 +612,17 @@ impl Application {
                     Ok(InputEvent::ToggleSelection) => {
                         if *is_editing_group_clients_guard {
                             if let Some(data) = &*status_data_guard {
-                                let mut selected_clients = self.app_state.selected_clients.lock().unwrap();
-                                let client_idx = *self.app_state.client_selection_index.lock().unwrap();
-                                let all_clients: Vec<_> = data.result.server.groups.iter().flat_map(|g| &g.clients).collect();
+                                let mut selected_clients =
+                                    self.app_state.selected_clients.lock().unwrap();
+                                let client_idx =
+                                    *self.app_state.client_selection_index.lock().unwrap();
+                                let all_clients: Vec<_> = data
+                                    .result
+                                    .server
+                                    .groups
+                                    .iter()
+                                    .flat_map(|g| &g.clients)
+                                    .collect();
                                 if let Some(client) = all_clients.get(client_idx) {
                                     if selected_clients.contains(&client.id) {
                                         selected_clients.retain(|id| id != &client.id);
@@ -457,40 +637,56 @@ impl Application {
                         if *is_editing_group_name_guard {
                             *is_editing_group_name_guard = false;
                             if let Some(data) = &*status_data_guard {
-                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
+                                if let Some(group) =
+                                    data.result.server.groups.get(*selected_index_guard)
+                                {
                                     let group_id = group.id.clone();
-                                    let new_name = self.app_state.editing_group_name.lock().unwrap().clone();
-                                    let set_name_request = crate::commands::group::setname::create_set_name_request(&group_id, &new_name);
-                                    if let Err(_) = self.cmd_tx.try_send(set_name_request) {
-                                    }
+                                    let new_name = self
+                                        .app_state
+                                        .editing_group_name
+                                        .lock()
+                                        .unwrap()
+                                        .clone();
+                                    let set_name_request =
+                                        crate::commands::group::setname::create_set_name_request(
+                                            &group_id, &new_name,
+                                        );
+                                    if let Err(_) = self.cmd_tx.try_send(set_name_request) {}
                                 }
                             }
                         } else if *is_editing_group_stream_guard {
                             *is_editing_group_stream_guard = false;
                             if let Some(data) = &*status_data_guard {
-                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
-                                    let stream_idx = *self.app_state.stream_selection_index.lock().unwrap();
-                                    if let Some(stream) = data.result.server.streams.get(stream_idx) {
+                                if let Some(group) =
+                                    data.result.server.groups.get(*selected_index_guard)
+                                {
+                                    let stream_idx =
+                                        *self.app_state.stream_selection_index.lock().unwrap();
+                                    if let Some(stream) =
+                                        data.result.server.streams.get(stream_idx)
+                                    {
                                         let set_stream_request = crate::commands::group::setstream::create_set_stream_request(&group.id, &stream.id);
-                                        if let Err(_) = self.cmd_tx.try_send(set_stream_request) {
-                                        }
+                                        if let Err(_) = self.cmd_tx.try_send(set_stream_request) {}
                                     }
                                 }
                             }
                         } else if *is_editing_group_muted_guard {
                             *is_editing_group_muted_guard = false;
-                            let selection_idx = *self.app_state.group_muted_selection_index.lock().unwrap();
+                            let selection_idx =
+                                *self.app_state.group_muted_selection_index.lock().unwrap();
                             let new_mute_status = selection_idx == 0;
                             if let Some(data) = &*status_data_guard {
-                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
+                                if let Some(group) =
+                                    data.result.server.groups.get(*selected_index_guard)
+                                {
                                     let set_mute_request = crate::commands::group::setmute::create_set_mute_request(&group.id, new_mute_status);
-                                    if let Err(_) = self.cmd_tx.try_send(set_mute_request) {
-                                    }
+                                    if let Err(_) = self.cmd_tx.try_send(set_mute_request) {}
                                 }
                             }
                         } else if *is_editing_client_muted_guard {
                             *is_editing_client_muted_guard = false;
-                            let selection_idx = *self.app_state.client_muted_selection_index.lock().unwrap();
+                            let selection_idx =
+                                *self.app_state.client_muted_selection_index.lock().unwrap();
                             let new_muted_status = selection_idx == 0;
                             if let Some(data) = &*status_data_guard {
                                 let mut client_count = 0;
@@ -502,7 +698,9 @@ impl Application {
                                                 new_muted_status,
                                                 client.config.volume.percent,
                                             );
-                                            if let Err(_) = self.cmd_tx.try_send(set_volume_request) {
+                                            if let Err(_) =
+                                                self.cmd_tx.try_send(set_volume_request)
+                                            {
                                             }
                                             break 'outer;
                                         }
@@ -513,11 +711,13 @@ impl Application {
                         } else if *is_editing_group_clients_guard {
                             *is_editing_group_clients_guard = false;
                             if let Some(data) = &*status_data_guard {
-                                if let Some(group) = data.result.server.groups.get(*selected_index_guard) {
-                                    let selected_clients = self.app_state.selected_clients.lock().unwrap().clone();
+                                if let Some(group) =
+                                    data.result.server.groups.get(*selected_index_guard)
+                                {
+                                    let selected_clients =
+                                        self.app_state.selected_clients.lock().unwrap().clone();
                                     let set_clients_request = crate::commands::group::setclients::create_set_clients_request(&group.id, selected_clients);
-                                    if let Err(_) = self.cmd_tx.try_send(set_clients_request) {
-                                    }
+                                    if let Err(_) = self.cmd_tx.try_send(set_clients_request) {}
                                 }
                             }
                         } else if *is_editing_name_guard {
@@ -537,8 +737,7 @@ impl Application {
                                             let set_name_request = crate::commands::client::setname::create_set_name_request(
                                                 &client_id, &new_name,
                                             );
-                                            if let Err(_) =
-                                                self.cmd_tx.try_send(set_name_request)
+                                            if let Err(_) = self.cmd_tx.try_send(set_name_request)
                                             {
                                             }
                                             break 'outer;
@@ -549,8 +748,12 @@ impl Application {
                             }
                         } else if *is_editing_volume_guard {
                             *is_editing_volume_guard = false;
-                            let new_volume_str =
-                                self.app_state.editing_client_volume.lock().unwrap().clone();
+                            let new_volume_str = self
+                                .app_state
+                                .editing_client_volume
+                                .lock()
+                                .unwrap()
+                                .clone();
                             if let Ok(new_volume) = new_volume_str.parse::<u32>() {
                                 if (0..=100).contains(&new_volume) {
                                     if let Some(data) = &*status_data_guard {
@@ -579,8 +782,12 @@ impl Application {
                             }
                         } else if *is_editing_latency_guard {
                             *is_editing_latency_guard = false;
-                            let new_latency_str =
-                                self.app_state.editing_client_latency.lock().unwrap().clone();
+                            let new_latency_str = self
+                                .app_state
+                                .editing_client_latency
+                                .lock()
+                                .unwrap()
+                                .clone();
                             if let Ok(new_latency) = new_latency_str.parse::<i32>() {
                                 if let Some(data) = &*status_data_guard {
                                     let mut client_count = 0;
@@ -633,9 +840,17 @@ impl Application {
                     }
                     Ok(InputEvent::Char(c)) => {
                         if *is_editing_group_name_guard {
-                            self.app_state.editing_group_name.lock().unwrap().push(c);
+                            self.app_state
+                                .editing_group_name
+                                .lock()
+                                .unwrap()
+                                .push(c);
                         } else if *is_editing_name_guard {
-                            self.app_state.editing_client_name.lock().unwrap().push(c);
+                            self.app_state
+                                .editing_client_name
+                                .lock()
+                                .unwrap()
+                                .push(c);
                         } else if *is_editing_volume_guard {
                             if c.is_ascii_digit() {
                                 self.app_state
@@ -660,9 +875,17 @@ impl Application {
                         } else if *is_editing_name_guard {
                             self.app_state.editing_client_name.lock().unwrap().pop();
                         } else if *is_editing_volume_guard {
-                            self.app_state.editing_client_volume.lock().unwrap().pop();
+                            self.app_state
+                                .editing_client_volume
+                                .lock()
+                                .unwrap()
+                                .pop();
                         } else if *is_editing_latency_guard {
-                            self.app_state.editing_client_latency.lock().unwrap().pop();
+                            self.app_state
+                                .editing_client_latency
+                                .lock()
+                                .unwrap()
+                                .pop();
                         }
                     }
                     Ok(InputEvent::TabChanged(_)) => {

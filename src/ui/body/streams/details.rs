@@ -3,12 +3,16 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, List, ListItem, Padding},
     style::{Style, Color},
 };
-use crate::ui::{AppState, utils::apply_margin};
+use crate::ui::{AppState, utils::apply_margin, PanelFocus};
 
 pub fn draw_stream_details(f: &mut Frame, app_state: &AppState, area: Rect) {
     let status_data = app_state.status_data.lock().unwrap();
     let selected_index = app_state.selected_index.lock().unwrap();
+    let focused_panel = app_state.focused_panel.lock().unwrap();
     let margin = 1;
+
+    let is_details_focused = *focused_panel == PanelFocus::Details;
+    let title = if is_details_focused { " [ * Stream Details * ] " } else { " [ Stream Details ] " };
 
     if let Some(data) = &*status_data {
         if data.result.server.streams.len() > *selected_index {
@@ -65,7 +69,7 @@ pub fn draw_stream_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
             let list = List::new(details)
                 .block(Block::default()
-                    .title(" [ Stream Details ] ")
+                    .title(title)
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(Color::Yellow))
                     .padding(Padding::new(3, 3, 1, 1))
@@ -80,7 +84,7 @@ pub fn draw_stream_details(f: &mut Frame, app_state: &AppState, area: Rect) {
 
     let details = Paragraph::new("Select a stream to see details")
         .block(Block::default()
-            .title(" [ Stream Details ] ")
+            .title(title)
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Yellow))
             .padding(Padding::new(3, 3, 1, 1))

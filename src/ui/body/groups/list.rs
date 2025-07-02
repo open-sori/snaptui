@@ -10,12 +10,14 @@ pub fn draw_group_list(f: &mut Frame, app_state: &AppState, area: Rect) {
     let focused_panel = app_state.focused_panel.lock().unwrap();
     let margin = 1;
 
+    let is_focused = *focused_panel == PanelFocus::List;
+    let title = if is_focused { " [ * Groups List * ] " } else { " [ Groups List ] " };
+
     let mut items = Vec::new();
 
     if let Some(data) = &*status_data {
         for (i, group) in data.result.server.groups.iter().enumerate() {
             let is_selected = i == *selected_index;
-            let is_focused = *focused_panel == PanelFocus::List;
 
             let content = if is_selected && is_focused {
                 format!("> {}", group.id)
@@ -38,7 +40,7 @@ pub fn draw_group_list(f: &mut Frame, app_state: &AppState, area: Rect) {
 
     let list = List::new(items)
         .block(Block::default()
-            .title(" [ Groups List ] ")
+            .title(title)
             .borders(Borders::ALL)
             .padding(Padding::new(1, 1, 1, 1))
             .border_style(Style::default().fg(Color::Magenta))

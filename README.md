@@ -1,10 +1,10 @@
-# 👻 snaptui
+# snaptui
 
 A terminal user interface (TUI) for the multi-room audio player [Snapcast](https://github.com/badaix/snapcast), built with Rust.
 
 ![screenshot](https://raw.githubusercontent.com/open-sori/snaptui/main/screenshot.png)
 
-## ✨ Features
+## Features
 
 - **Real-time Monitoring**: Connects to your Snapcast server and displays live information.
 - **Tabbed Interface**: Easily switch between views for Groups, Clients, and Streams.
@@ -22,7 +22,7 @@ A terminal user interface (TUI) for the multi-room audio player [Snapcast](https
 - **Responsive UI**: Built with `ratatui` for a smooth terminal experience.
 - **Lightweight**: Runs as a single binary.
 
-## 🚀 Installation
+## Installation
 
 ### From Crates.io
 
@@ -47,7 +47,7 @@ cargo install snaptui
 
 3. The binary will be located at `target/release/snaptui`.
 
-## ⚡️ Usage
+## Usage
 
 Run the application with:
 
@@ -74,7 +74,7 @@ snaptui --host 192.168.1.100
 snaptui --host 192.168.1.100 --port 1788
 ```
 
-## ⌨️ Keybindings
+## Keybindings
 
 | Key(s)    | Action                                       |
 |-----------|----------------------------------------------|
@@ -87,11 +87,10 @@ snaptui --host 192.168.1.100 --port 1788
 | `Esc`     | Cancel "edit mode".                          |
 | `Space`   | Toggle selection (e.g., for group clients).  |
 
-
-## 🤝 Contributing
+## Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/open-sori/snaptui/issues).
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

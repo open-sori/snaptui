@@ -28,16 +28,18 @@ use std::time::Instant;
 pub enum PanelFocus {
     List,
     Details,
+    Events,
 }
 
 pub struct AppState {
-    pub last_message: Arc<Mutex<String>>,
+    pub events: Arc<Mutex<Vec<String>>>,
     pub status: Arc<Mutex<ConnectionStatus>>,
     pub server_version: Arc<Mutex<String>>,
     pub status_data: Arc<Mutex<Option<GetStatusData>>>,
     pub active_tab: Arc<Mutex<TabSelection>>,
     pub selected_index: Arc<Mutex<usize>>,
     pub focused_panel: Arc<Mutex<PanelFocus>>,
+    pub events_scroll_offset: Arc<Mutex<usize>>,
     pub group_focused_field: Arc<Mutex<GroupDetailsFocus>>,
     pub client_focused_field: Arc<Mutex<ClientDetailsFocus>>,
     pub is_editing_group_name: Arc<Mutex<bool>>,
@@ -94,7 +96,7 @@ fn create_main_layout(area: Rect) -> Vec<Rect> {
         .constraints([
             Constraint::Length(3),
             Constraint::Min(1),
-            Constraint::Length(7),
+            Constraint::Length(8),
         ])
         .split(area)
         .to_vec()

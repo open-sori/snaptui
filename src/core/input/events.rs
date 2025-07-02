@@ -11,7 +11,10 @@ pub enum InputEvent {
     TabChanged(TabSelection),
     Up,
     Down,
+    Left,
+    Right,
     ToggleFocus,
+    ReverseToggleFocus,
     ToggleSelection,
     Edit,
     Confirm,
@@ -67,12 +70,16 @@ pub fn handle_input(
                 match key_event.code {
                     KeyCode::Char('q') => return Ok(InputEvent::Quit),
                     KeyCode::Tab => return Ok(InputEvent::ToggleFocus),
+                    KeyCode::BackTab => return Ok(InputEvent::ReverseToggleFocus),
                     KeyCode::Char('e') => {
                         if **focused_panel == PanelFocus::Details {
                             return Ok(InputEvent::Edit);
                         }
                     }
                     KeyCode::Left => {
+                        if **focused_panel == PanelFocus::Events {
+                            return Ok(InputEvent::Left);
+                        }
                         let new_tab = match **current_tab {
                             TabSelection::Groups => TabSelection::Streams,
                             TabSelection::Clients => TabSelection::Groups,
@@ -83,6 +90,9 @@ pub fn handle_input(
                         return Ok(InputEvent::TabChanged(new_tab));
                     }
                     KeyCode::Right => {
+                        if **focused_panel == PanelFocus::Events {
+                            return Ok(InputEvent::Right);
+                        }
                         let new_tab = match **current_tab {
                             TabSelection::Groups => TabSelection::Clients,
                             TabSelection::Clients => TabSelection::Streams,
