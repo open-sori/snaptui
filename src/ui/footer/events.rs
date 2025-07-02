@@ -10,7 +10,6 @@ use ratatui::{
 pub fn draw_events(f: &mut Frame, app_state: &AppState, area: Rect) {
     let events = app_state.events.lock().unwrap();
     let focused_panel = app_state.focused_panel.lock().unwrap();
-    let scroll_offset = *app_state.events_scroll_offset.lock().unwrap();
     let margin = 1;
 
     let is_focused = *focused_panel == PanelFocus::Events;
@@ -33,8 +32,7 @@ pub fn draw_events(f: &mut Frame, app_state: &AppState, area: Rect) {
                 .title(title)
                 .padding(Padding::new(2, 2, 1, 1))
                 .title_style(Style::default().fg(Color::White)),
-        )
-        .scroll((0, scroll_offset as u16));
+        );
 
     let inner_area = apply_margin(area, margin);
     f.render_widget(events_paragraph, inner_area);
