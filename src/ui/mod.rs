@@ -23,6 +23,7 @@ use crossterm::{
 use crate::core::websocket::connection::ConnectionStatus;
 use crate::models::server::getstatus::GetStatusData;
 use std::time::Instant;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PanelFocus {
@@ -61,6 +62,7 @@ pub struct AppState {
     pub editing_client_latency: Arc<Mutex<String>>,
     pub cursor_visible: Arc<Mutex<bool>>,
     pub last_cursor_toggle: Arc<Mutex<Instant>>,
+    pub request_methods: Arc<Mutex<HashMap<String, String>>>,
 }
 
 pub fn initialize_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {

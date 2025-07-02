@@ -21,6 +21,7 @@ use crate::ui::{
 };
 use chrono::Local;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::io::Result;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -67,6 +68,7 @@ impl Application {
             editing_client_latency: Arc::new(Mutex::new(String::new())),
             cursor_visible: Arc::new(Mutex::new(true)),
             last_cursor_toggle: Arc::new(Mutex::new(Instant::now())),
+            request_methods: Arc::new(Mutex::new(HashMap::new())),
         };
 
         Ok(Self {
@@ -94,6 +96,7 @@ impl Application {
         let status_data_arc: Arc<Mutex<Option<GetStatusData>>> = Arc::clone(&self.status_data);
         let events_arc = Arc::clone(&self.app_state.events);
         let version_arc = Arc::clone(&self.app_state.server_version);
+        let request_methods_arc = Arc::clone(&self.app_state.request_methods);
         let cmd_tx_clone = self.cmd_tx.clone();
 
         tokio::spawn(async move {
@@ -114,6 +117,27 @@ impl Application {
                                 }
                             }
                         } else {
+                            let mut method_name = "Response".to_string();
+                            if let Some(id_val) = json_value.get("id") {
+                                if let Some(id_str) = id_val.as_str() {
+                                    let mut methods = request_methods_arc.lock().unwrap();
+                                    if let Some(method) = methods.remove(id_str) {
+                                        method_name = method;
+                                    }
+                                }
+                            }
+
+                            {
+                                let mut events = events_arc.lock().unwrap();
+                                let now = Local::now();
+                                let formatted_time = now.format("%Y-%m-%d %H:%M:%S");
+                                let event_string = format!(
+                                    "{} - {}:\n{}",
+                                    formatted_time, method_name, msg
+                                );
+                                events.push(event_string);
+                            }
+
                             let status_request = create_status_request();
                             if let Err(_) = cmd_tx_clone.send(status_request).await {}
                         }
@@ -127,100 +151,174 @@ impl Application {
                                 "Client.OnConnect" => {
                                     match serde_json::from_str::<ClientOnConnect>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Client.OnConnect: {}", e)),
+                                        Err(e) => Some(format!(
+                                            "Error parsing Client.OnConnect: {}",
+                                            e
+                                        )),
                                     }
                                 }
                                 "Client.OnDisconnect" => {
                                     match serde_json::from_str::<ClientOnDisconnect>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Client.OnDisconnect: {}", e)),
+                                        Err(e) => Some(format!(
+                                            "Error parsing Client.OnDisconnect: {}",
+                                            e
+                                        )),
                                     }
                                 }
                                 "Client.OnVolumeChanged" => {
                                     match serde_json::from_str::<ClientOnVolumeChanged>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Client.OnVolumeChanged: {}", e)),
+                                        Err(e) => Some(format!(
+                                            "Error parsing Client.OnVolumeChanged: {}",
+                                            e
+                                        )),
                                     }
                                 }
                                 "Client.OnLatencyChanged" => {
                                     match serde_json::from_str::<ClientOnLatencyChanged>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Client.OnLatencyChanged: {}", e)),
+                                        Err(e) => Some(format!(
+                                            "Error parsing Client.OnLatencyChanged: {}",
+                                            e
+                                        )),
                                     }
                                 }
                                 "Client.OnNameChanged" => {
                                     match serde_json::from_str::<ClientOnNameChanged>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Client.OnNameChanged: {}", e)),
+                                        Err(e) => Some(format!(
+                                            "Error parsing Client.OnNameChanged: {}",
+                                            e
+                                        )),
                                     }
                                 }
                                 "Group.OnMute" => {
                                     match serde_json::from_str::<GroupOnMute>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Group.OnMute: {}", e)),
+                                        Err(e) => {
+                                            Some(format!("Error parsing Group.OnMute: {}", e))
+                                        }
                                     }
                                 }
                                 "Group.OnStreamChanged" => {
                                     match serde_json::from_str::<GroupOnStreamChanged>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Group.OnStreamChanged: {}", e)),
+                                        Err(e) => Some(format!(
+                                            "Error parsing Group.OnStreamChanged: {}",
+                                            e
+                                        )),
                                     }
                                 }
                                 "Group.OnNameChanged" => {
                                     match serde_json::from_str::<GroupOnNameChanged>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Group.OnNameChanged: {}", e)),
+                                        Err(e) => Some(format!(
+                                            "Error parsing Group.OnNameChanged: {}",
+                                            e
+                                        )),
                                     }
                                 }
                                 "Stream.OnUpdate" => {
                                     match serde_json::from_str::<StreamOnUpdate>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Stream.OnUpdate: {}", e)),
+                                        Err(e) => {
+                                            Some(format!("Error parsing Stream.OnUpdate: {}", e))
+                                        }
                                     }
                                 }
                                 "Stream.OnProperties" => {
                                     match serde_json::from_str::<StreamOnProperties>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Stream.OnProperties: {}", e)),
+                                        Err(e) => Some(format!(
+                                            "Error parsing Stream.OnProperties: {}",
+                                            e
+                                        )),
                                     }
                                 }
                                 "Server.OnUpdate" => {
                                     match serde_json::from_str::<ServerOnUpdate>(&msg) {
                                         Ok(n) => {
-                                            let params_str = serde_json::to_string(&n.params).unwrap_or_default();
-                                            Some(format!("{} - {}\n{}", formatted_time, n.method, params_str))
+                                            let params_str =
+                                                serde_json::to_string(&n.params).unwrap_or_default();
+                                            Some(format!(
+                                                "{} - {}\n{}",
+                                                formatted_time, n.method, params_str
+                                            ))
                                         }
-                                        Err(e) => Some(format!("Error parsing Server.OnUpdate: {}", e)),
+                                        Err(e) => {
+                                            Some(format!("Error parsing Server.OnUpdate: {}", e))
+                                        }
                                     }
                                 }
                                 _ => None,
@@ -234,6 +332,21 @@ impl Application {
                 }
             }
         });
+
+        // Helper function to send a command and store its method
+        let send_command = |request: String, app_state: &AppState, cmd_tx: &mpsc::Sender<String>| {
+            if let Ok(json_value) = serde_json::from_str::<Value>(&request) {
+                if let (Some(id_val), Some(method_val)) =
+                    (json_value.get("id"), json_value.get("method"))
+                {
+                    if let (Some(id), Some(method)) = (id_val.as_str(), method_val.as_str()) {
+                        let mut methods = app_state.request_methods.lock().unwrap();
+                        methods.insert(id.to_string(), method.to_string());
+                    }
+                }
+            }
+            if let Err(_) = cmd_tx.try_send(request) {}
+        };
 
         loop {
             // Handle cursor blinking
@@ -465,8 +578,11 @@ impl Application {
                                             .lock()
                                             .unwrap();
                                         if let Some(data) = &*status_data_guard {
-                                            if let Some(group) =
-                                                data.result.server.groups.get(*selected_index_guard)
+                                            if let Some(group) = data
+                                                .result
+                                                .server
+                                                .groups
+                                                .get(*selected_index_guard)
                                             {
                                                 *selection_idx = if group.muted { 0 } else { 1 };
                                             }
@@ -477,8 +593,11 @@ impl Application {
                                         let mut selected_clients =
                                             self.app_state.selected_clients.lock().unwrap();
                                         if let Some(data) = &*status_data_guard {
-                                            if let Some(group) =
-                                                data.result.server.groups.get(*selected_index_guard)
+                                            if let Some(group) = data
+                                                .result
+                                                .server
+                                                .groups
+                                                .get(*selected_index_guard)
                                             {
                                                 *selected_clients = group
                                                     .clients
@@ -552,15 +671,12 @@ impl Application {
                                             'outer: for group in &data.result.server.groups {
                                                 for client in &group.clients {
                                                     if client_count == *selected_index_guard {
-                                                        *selection_idx = if client
-                                                            .config
-                                                            .volume
-                                                            .muted
-                                                        {
-                                                            0
-                                                        } else {
-                                                            1
-                                                        };
+                                                        *selection_idx =
+                                                            if client.config.volume.muted {
+                                                                0
+                                                            } else {
+                                                                1
+                                                            };
                                                         break 'outer;
                                                     }
                                                     client_count += 1;
@@ -631,17 +747,13 @@ impl Application {
                                     data.result.server.groups.get(*selected_index_guard)
                                 {
                                     let group_id = group.id.clone();
-                                    let new_name = self
-                                        .app_state
-                                        .editing_group_name
-                                        .lock()
-                                        .unwrap()
-                                        .clone();
+                                    let new_name =
+                                        self.app_state.editing_group_name.lock().unwrap().clone();
                                     let set_name_request =
                                         crate::commands::group::setname::create_set_name_request(
                                             &group_id, &new_name,
                                         );
-                                    if let Err(_) = self.cmd_tx.try_send(set_name_request) {}
+                                    send_command(set_name_request, &self.app_state, &self.cmd_tx);
                                 }
                             }
                         } else if *is_editing_group_stream_guard {
@@ -656,7 +768,11 @@ impl Application {
                                         data.result.server.streams.get(stream_idx)
                                     {
                                         let set_stream_request = crate::commands::group::setstream::create_set_stream_request(&group.id, &stream.id);
-                                        if let Err(_) = self.cmd_tx.try_send(set_stream_request) {}
+                                        send_command(
+                                            set_stream_request,
+                                            &self.app_state,
+                                            &self.cmd_tx,
+                                        );
                                     }
                                 }
                             }
@@ -669,8 +785,16 @@ impl Application {
                                 if let Some(group) =
                                     data.result.server.groups.get(*selected_index_guard)
                                 {
-                                    let set_mute_request = crate::commands::group::setmute::create_set_mute_request(&group.id, new_mute_status);
-                                    if let Err(_) = self.cmd_tx.try_send(set_mute_request) {}
+                                    let set_mute_request =
+                                        crate::commands::group::setmute::create_set_mute_request(
+                                            &group.id,
+                                            new_mute_status,
+                                        );
+                                    send_command(
+                                        set_mute_request,
+                                        &self.app_state,
+                                        &self.cmd_tx,
+                                    );
                                 }
                             }
                         } else if *is_editing_client_muted_guard {
@@ -688,10 +812,11 @@ impl Application {
                                                 new_muted_status,
                                                 client.config.volume.percent,
                                             );
-                                            if let Err(_) =
-                                                self.cmd_tx.try_send(set_volume_request)
-                                            {
-                                            }
+                                            send_command(
+                                                set_volume_request,
+                                                &self.app_state,
+                                                &self.cmd_tx,
+                                            );
                                             break 'outer;
                                         }
                                         client_count += 1;
@@ -707,7 +832,11 @@ impl Application {
                                     let selected_clients =
                                         self.app_state.selected_clients.lock().unwrap().clone();
                                     let set_clients_request = crate::commands::group::setclients::create_set_clients_request(&group.id, selected_clients);
-                                    if let Err(_) = self.cmd_tx.try_send(set_clients_request) {}
+                                    send_command(
+                                        set_clients_request,
+                                        &self.app_state,
+                                        &self.cmd_tx,
+                                    );
                                 }
                             }
                         } else if *is_editing_name_guard {
@@ -724,12 +853,15 @@ impl Application {
                                                 .lock()
                                                 .unwrap()
                                                 .clone();
-                                            let set_name_request = crate::commands::client::setname::create_set_name_request(
-                                                &client_id, &new_name,
+                                            let set_name_request =
+                                                crate::commands::client::setname::create_set_name_request(
+                                                    &client_id, &new_name,
+                                                );
+                                            send_command(
+                                                set_name_request,
+                                                &self.app_state,
+                                                &self.cmd_tx,
                                             );
-                                            if let Err(_) = self.cmd_tx.try_send(set_name_request)
-                                            {
-                                            }
                                             break 'outer;
                                         }
                                         client_count += 1;
@@ -738,12 +870,8 @@ impl Application {
                             }
                         } else if *is_editing_volume_guard {
                             *is_editing_volume_guard = false;
-                            let new_volume_str = self
-                                .app_state
-                                .editing_client_volume
-                                .lock()
-                                .unwrap()
-                                .clone();
+                            let new_volume_str =
+                                self.app_state.editing_client_volume.lock().unwrap().clone();
                             if let Ok(new_volume) = new_volume_str.parse::<u32>() {
                                 if (0..=100).contains(&new_volume) {
                                     if let Some(data) = &*status_data_guard {
@@ -757,10 +885,11 @@ impl Application {
                                                         client.config.volume.muted,
                                                         new_volume,
                                                     );
-                                                    if let Err(_) =
-                                                        self.cmd_tx.try_send(set_volume_request)
-                                                    {
-                                                    }
+                                                    send_command(
+                                                        set_volume_request,
+                                                        &self.app_state,
+                                                        &self.cmd_tx,
+                                                    );
                                                     break 'outer;
                                                 }
                                                 client_count += 1;
@@ -789,10 +918,11 @@ impl Application {
                                                     &client_id,
                                                     new_latency,
                                                 );
-                                                if let Err(_) =
-                                                    self.cmd_tx.try_send(set_latency_request)
-                                                {
-                                                }
+                                                send_command(
+                                                    set_latency_request,
+                                                    &self.app_state,
+                                                    &self.cmd_tx,
+                                                );
                                                 break 'outer;
                                             }
                                             client_count += 1;
@@ -830,11 +960,7 @@ impl Application {
                     }
                     Ok(InputEvent::Char(c)) => {
                         if *is_editing_group_name_guard {
-                            self.app_state
-                                .editing_group_name
-                                .lock()
-                                .unwrap()
-                                .push(c);
+                            self.app_state.editing_group_name.lock().unwrap().push(c);
                         } else if *is_editing_name_guard {
                             self.app_state
                                 .editing_client_name
