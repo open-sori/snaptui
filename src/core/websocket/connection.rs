@@ -59,13 +59,6 @@ pub async fn websocket_task(
                                     if tx.send(text.to_string()).await.is_err() {
                                         break;
                                     }
-
-                                    if is_notification(&text) {
-                                        let status_request = create_status_request();
-                                        if let Err(_) = write.send(Message::Text(status_request.into())).await {
-                                            break;
-                                        }
-                                    }
                                 }
                                 Ok(Message::Ping(data)) => {
                                     if let Err(_) = write.send(Message::Pong(data)).await {
@@ -102,8 +95,4 @@ pub async fn websocket_task(
 async fn update_status(status_tx: &mpsc::Sender<ConnectionStatus>, status: ConnectionStatus) {
     if let Err(_) = status_tx.send(status).await {
     }
-}
-
-fn is_notification(message: &str) -> bool {
-    message.contains("\"method\"") && !message.contains("\"result\"")
 }

@@ -37,6 +37,8 @@ pub fn handle_input(
     is_editing_client_name: bool,
     is_editing_client_volume: bool,
     is_editing_client_latency: bool,
+    group_focused_field: &mut MutexGuard<'_, GroupDetailsFocus>,
+    client_focused_field: &mut MutexGuard<'_, ClientDetailsFocus>,
 ) -> Result<InputEvent> {
     if event::poll(Duration::from_millis(10))? {
         if let Event::Key(key_event) = event::read()? {
@@ -69,8 +71,48 @@ pub fn handle_input(
                 // Handle regular key presses
                 match key_event.code {
                     KeyCode::Char('q') => return Ok(InputEvent::Quit),
-                    KeyCode::Tab => return Ok(InputEvent::ToggleFocus),
-                    KeyCode::BackTab => return Ok(InputEvent::ReverseToggleFocus),
+                    KeyCode::Tab => {
+                        let new_focus = match **focused_panel {
+                            PanelFocus::List => PanelFocus::Details,
+                            PanelFocus::Details => PanelFocus::Events,
+                            PanelFocus::Events => PanelFocus::List,
+                        };
+                        **focused_panel = new_focus;
+
+                        if **focused_panel == PanelFocus::Details {
+                             match **current_tab {
+                                TabSelection::Groups => {
+                                    **group_focused_field = GroupDetailsFocus::Name;
+                                }
+                                TabSelection::Clients => {
+                                    **client_focused_field = ClientDetailsFocus::Name;
+                                }
+                                _ => {}
+                            }
+                        }
+                        return Ok(InputEvent::ToggleFocus);
+                    }
+                    KeyCode::BackTab => {
+                        let new_focus = match **focused_panel {
+                            PanelFocus::List => PanelFocus::Events,
+                            PanelFocus::Events => PanelFocus::Details,
+                            PanelFocus::Details => PanelFocus::List,
+                        };
+                        **focused_panel = new_focus;
+
+                        if **focused_panel == PanelFocus::Details {
+                             match **current_tab {
+                                TabSelection::Groups => {
+                                    **group_focused_field = GroupDetailsFocus::Name;
+                                }
+                                TabSelection::Clients => {
+                                    **client_focused_field = ClientDetailsFocus::Name;
+                                }
+                                _ => {}
+                            }
+                        }
+                        return Ok(InputEvent::ReverseToggleFocus);
+                    }
                     KeyCode::Char('e') => {
                         if **focused_panel == PanelFocus::Details {
                             return Ok(InputEvent::Edit);
@@ -118,11 +160,11 @@ pub fn handle_input(
 
 pub fn get_next_group_field(current_field: &GroupDetailsFocus) -> GroupDetailsFocus {
     match current_field {
+        GroupDetailsFocus::None => GroupDetailsFocus::Name,
         GroupDetailsFocus::Name => GroupDetailsFocus::StreamId,
         GroupDetailsFocus::StreamId => GroupDetailsFocus::Muted,
         GroupDetailsFocus::Muted => GroupDetailsFocus::Clients,
         GroupDetailsFocus::Clients => GroupDetailsFocus::Name,
-        _ => GroupDetailsFocus::Name,
     }
 }
 
@@ -138,11 +180,11 @@ pub fn get_previous_group_field(current_field: &GroupDetailsFocus) -> GroupDetai
 
 pub fn get_next_client_field(current_field: &ClientDetailsFocus) -> ClientDetailsFocus {
     match current_field {
+        ClientDetailsFocus::None => ClientDetailsFocus::Name,
         ClientDetailsFocus::Name => ClientDetailsFocus::Volume,
         ClientDetailsFocus::Volume => ClientDetailsFocus::Muted,
         ClientDetailsFocus::Muted => ClientDetailsFocus::Latency,
         ClientDetailsFocus::Latency => ClientDetailsFocus::Name,
-        _ => ClientDetailsFocus::Name,
     }
 }
 

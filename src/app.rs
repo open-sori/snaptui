@@ -306,26 +306,16 @@ impl Application {
                     *is_editing_name_guard,
                     *is_editing_volume_guard,
                     *is_editing_latency_guard,
+                    &mut group_focused_field_guard,
+                    &mut client_focused_field_guard,
                 );
 
                 let client_focused_field = client_focused_field_guard.clone();
 
                 match input_event {
                     Ok(InputEvent::Quit) => break,
-                    Ok(InputEvent::ToggleFocus) => {
-                        *focused_panel_guard = match *focused_panel_guard {
-                            PanelFocus::List => PanelFocus::Details,
-                            PanelFocus::Details => PanelFocus::Events,
-                            PanelFocus::Events => PanelFocus::List,
-                        };
-                    }
-                    Ok(InputEvent::ReverseToggleFocus) => {
-                        *focused_panel_guard = match *focused_panel_guard {
-                            PanelFocus::List => PanelFocus::Events,
-                            PanelFocus::Events => PanelFocus::Details,
-                            PanelFocus::Details => PanelFocus::List,
-                        };
-                    }
+                    Ok(InputEvent::ToggleFocus) => {}
+                    Ok(InputEvent::ReverseToggleFocus) => {}
                     Ok(InputEvent::Left) => {
                         if *focused_panel_guard == PanelFocus::Events {
                             let mut offset = self.app_state.events_scroll_offset.lock().unwrap();
