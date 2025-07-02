@@ -103,6 +103,9 @@ impl Application {
                                 }
                             }
                         } else {
+                            if let Ok(mut message) = message_arc.lock() {
+                                *message = msg.clone();
+                            }
                             let status_request = create_status_request();
                             if let Err(_) = cmd_tx_clone.send(status_request).await {
                             }
