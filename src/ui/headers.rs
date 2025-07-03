@@ -7,7 +7,8 @@ use ratatui::{
 use crate::ui::AppState;
 
 pub fn draw_header(f: &mut Frame, _app_state: &AppState, area: Rect) {
-    let header_text = Paragraph::new("[ snaptui v0.2.0 ]")
+    let header_text = Paragraph::new(format!("[ snaptui v{} ]", env!("CARGO_PKG_VERSION")))
+
         .style(Style::default().fg(Color::Cyan).bold())
         .alignment(Alignment::Center);
 
