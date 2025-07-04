@@ -1,11 +1,11 @@
 [package]
 name = "snaptui"
-version = "1.0.0"
+version = "0.18.0"
 edition = "2021"
 description = "A TUI application for monitoring Snapcast servers"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT"
-repository = "https://github.com/yourusername/snaptui"
+repository = "https://github.com/open-sori/snaptui"
 
 [dependencies]
 tokio = { version = "1.45", features = ["full"] }
