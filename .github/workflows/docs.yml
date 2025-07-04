@@ -43,7 +43,7 @@ jobs:
         run: |
           echo "NEXT_VERSION=$(semantic-release --dry-run | grep "Release note for version" |sed -n 's/.*Release note for version \([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')" >> $GITHUB_ENV
         working-directory: docs
-      - name: Update package.toml
+      - name: Update package.json
         run: |
           sed -i'' -e "s/\"version\": \".*\"/\"version\": \"${{ env.NEXT_VERSION }}\"/" package.json
         working-directory: docs
@@ -98,6 +98,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: package_json
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -105,6 +108,7 @@ jobs:
       - name: Install semantic-release and plugins
         run: npm install -g semantic-release @semantic-release/github @semantic-release/git @semantic-release/changelog
         working-directory: docs
+      
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
