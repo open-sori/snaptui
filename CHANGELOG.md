@@ -3,6 +3,13 @@
 
 ### Features
 
+* initial commit ([c4b5162](https://github.com/open-sori/snaptui/commit/c4b5162087f24d08d4372c2a55a853f685fc58e0))
+
+# 1.0.0 (2025-07-20)
+
+
+### Features
+
 * initial commit ([142de90](https://github.com/open-sori/snaptui/commit/142de90da6043f7fa8f8a40078029d40e560f620))
 
 # 1.0.0 (2025-07-04)
